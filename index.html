@@ -69,6 +69,13 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 .ttag.none{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
 .sheet{position:fixed;inset:0;z-index:60;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;
   padding:calc(env(safe-area-inset-top,0px) + 12px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 32px) max(16px,env(safe-area-inset-left,0px))}
+.cnotes{min-height:110px;resize:vertical;line-height:1.45}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:6px}
+.note .nh{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.note .nh b{font-size:.95rem}
+.note p{margin:0;white-space:pre-wrap;line-height:1.45}
+.note mark{background:color-mix(in srgb,var(--accent) 30%,transparent);color:inherit;border-radius:3px}
+.ttag.note-ind{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
 .sheet-in{max-width:720px;margin:0 auto;display:grid;gap:12px}
 .sheet-head{display:flex;align-items:center;gap:10px;position:sticky;top:0;background:var(--bg);padding-block:6px;z-index:2}
 .sheet-head h2{margin:0;flex:1;font-family:var(--display);text-transform:uppercase;font-size:1.5rem}
@@ -251,6 +258,12 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
     <p class="hint">Blocks change in 5-minute steps. Tap a number to type any length.</p>
   </section>
 
+  <section class="card" aria-label="Coach's notes">
+    <div class="row" style="justify-content:space-between"><span class="label">Coach's notes</span><button class="btn small" id="allNotes">View all notes</button></div>
+    <textarea id="cNotes" class="in cnotes" rows="4" placeholder="What worked, what to fix next time, player notes, attendance…"></textarea>
+    <p class="hint" id="cNotesInfo"></p>
+  </section>
+
   <section class="card" aria-label="Schedule">
     <div class="label">Practice schedule</div>
     <p class="hint">Change the date or start time of any practice right here. Tap a name to open it.</p>
@@ -272,6 +285,14 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
   </section>
 </main>
 
+<section class="sheet" id="notesSheet" hidden aria-label="All coach's notes">
+  <div class="sheet-in">
+    <div class="sheet-head"><h2>Coach's notes</h2><button class="btn primary" id="notesDone">Done</button></div>
+    <p class="hint" id="notesScope"></p>
+    <input id="notesSearch" class="in" type="search" placeholder="Search notes" aria-label="Search notes">
+    <div id="notesList" class="sched"></div>
+  </div>
+</section>
 <section class="sheet" id="teamSheet" hidden aria-label="Choose your teams">
   <div class="sheet-in">
     <div class="sheet-head"><h2>My teams</h2><button class="btn primary" id="teamsDone">Done</button></div>
@@ -360,7 +381,7 @@ function renderSched(){const el=$('sched');if(!el)return;const list=sortedPlans(
   if(!list.length){el.innerHTML=`<p class="hint">No practices for ${esc(S.filter==='none'?'this filter':fullName(S.filter))} yet. Tap + New practice to add one.</p>`;return;}
   el.innerHTML=list.map(p=>`<div class="srow${p.id===S.cur?' cur':''}" data-pid="${p.id}">
     <button class="sname" data-s="open">${esc(pTitle(p))}</button>
-    <div class="ttags">${teamsOf(p).length?teamsOf(p).map(t=>`<span class="ttag">${esc(t)}</span>`).join(''):'<span class="ttag none">No team</span>'}</div>
+    <div class="ttags">${teamsOf(p).length?teamsOf(p).map(t=>`<span class="ttag">${esc(t)}</span>`).join(''):'<span class="ttag none">No team</span>'}${(p.coachNotes||'').trim()?'<span class="ttag note-ind">Notes</span>':''}</div>
     <input class="in" type="date" data-s="date" value="${esc(p.date||'')}" aria-label="Date for practice ${esc(pTitle(p))}">
     <input class="in" type="time" step="300" data-s="start" value="${esc(p.start||'18:00')}" aria-label="Start time for practice ${esc(pTitle(p))}"></div>`).join('');}
 function renderPicker(){
@@ -397,7 +418,10 @@ function renderBlocks(){
 }
 function grow(t){t.style.height='auto';t.style.height=Math.min(240,t.scrollHeight+2)+'px';}
 function renderAdds(){$('adds').innerHTML=ORDER.map(k=>`<button class="add" data-add="${k}" style="--c:var(--t-${k})" title="${esc(TYPES[k].desc)}">${TYPES[k].label}</button>`).join('');}
-function renderAll(){renderPicker();renderBudget();renderBlocks();}
+function renderNotes(){const p=plan(),t=$('cNotes');if(document.activeElement!==t)t.value=p.coachNotes||'';growN();
+  $('cNotesInfo').textContent=p.notesAt?'Last edited '+new Date(p.notesAt).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'. Saved on this device.':'Saved on this device with this practice. Find past notes any time with View all notes.';}
+function growN(){const t=$('cNotes');t.style.height='auto';t.style.height=Math.max(110,Math.min(480,t.scrollHeight+2))+'px';}
+function renderAll(){renderNotes();renderPicker();renderBudget();renderBlocks();}
 function refreshTimes(){const p=plan();let at=toMin(p.start);document.querySelectorAll('.blk').forEach((el,i)=>{const b=p.blocks[i];const from=at;at+=+b.min||0;el.querySelector('.when').innerHTML=`<b>${clockShort(from)}</b>${clockShort(at)}`;});renderBudget();}
 
 /* ---------- plan events ---------- */
@@ -408,7 +432,7 @@ function setStart(v){if(!v||plan().start===v)return;plan().start=v;S.lastStart=v
 ['input','change','blur'].forEach(ev=>$('pStart').addEventListener(ev,e=>setStart(e.target.value)));
 $('pLen').addEventListener('change',e=>{plan().len=+e.target.value;save();renderBudget();});
 $('newPlan').addEventListener('click',()=>{const p=newPlan('Practice');S.plans.push(p);S.cur=p.id;save();renderAll();$('pDate').focus();msg('New practice made from your default plan. Set its date and teams.');});
-$('dupPlan').addEventListener('click',()=>{const o=plan(),p=JSON.parse(JSON.stringify(o));p.id=uid();p.date=today();p.blocks.forEach(b=>b.id=uid());S.plans.push(p);S.cur=p.id;save();renderAll();msg('Practice duplicated.');});
+$('dupPlan').addEventListener('click',()=>{const o=plan(),p=JSON.parse(JSON.stringify(o));p.id=uid();p.date=today();p.coachNotes='';delete p.notesAt;p.blocks.forEach(b=>b.id=uid());S.plans.push(p);S.cur=p.id;save();renderAll();msg('Practice duplicated.');});
 $('delPlan').addEventListener('click',e=>{const b=e.currentTarget;
   if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Tap to delete';setTimeout(()=>{delete b.dataset.armed;b.textContent='Delete';},3000);return;}
   delete b.dataset.armed;b.textContent='Delete';
@@ -445,7 +469,7 @@ $('sched').addEventListener('click',e=>{const b=e.target.closest('[data-s="open"
 $('repGo').addEventListener('click',()=>{const src=plan(),n=+$('repN').value||1;const base=new Date((src.date||today())+'T12:00');if(isNaN(base)){msg('Set a date for this practice first.');return;}
   for(let k=1;k<=n;k++){const d=new Date(base);d.setDate(d.getDate()+7*k);const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     if(S.plans.some(p=>p.date===ds&&p.start===src.start&&pTeams(p)===pTeams(src)))continue;
-    const c=JSON.parse(JSON.stringify(src));c.id=uid();c.date=ds;c.blocks.forEach(b=>b.id=uid());S.plans.push(c);}
+    const c=JSON.parse(JSON.stringify(src));c.id=uid();c.date=ds;c.coachNotes='';delete c.notesAt;c.blocks.forEach(b=>b.id=uid());S.plans.push(c);}
   save();renderOptions();renderSched();msg(`Added ${n} weekly date${n>1?'s':''}. Change any date in the schedule above.`);});
 
 /* ---------- block events ---------- */
@@ -555,6 +579,24 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.run&&!S
   try{if(navigator.wakeLock&&!wake)navigator.wakeLock.request('screen').then(w=>wake=w).catch(()=>{});}catch(e){}}});
 document.addEventListener('keydown',e=>{if($('run').hidden)return;if(e.key===' '){e.preventDefault();$('rPP')&&$('rPP').click();}else if(e.key==='ArrowRight'){advance(true);}});
 
+
+
+/* ---------- coach's notes ---------- */
+$('cNotes').addEventListener('input',e=>{const p=plan();p.coachNotes=e.target.value;p.notesAt=Date.now();save();growN();
+  clearTimeout(window.__cn);window.__cn=setTimeout(()=>{renderSched();renderNotes();},800);});
+function drawNotes(){const q=($('notesSearch').value||'').trim().toLowerCase();
+  const list=sortedPlans().filter(p=>(p.coachNotes||'').trim()).reverse().filter(p=>!q||(p.coachNotes+' '+pTeams(p)+' '+pTitle(p)).toLowerCase().includes(q));
+  const hl=t=>{let h=esc(t);if(q){const re=new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');h=h.replace(re,m=>`<mark>${m}</mark>`);}return h;};
+  $('notesScope').textContent=(S.filter&&S.filter!=='all'?`Notes for ${S.filter==='none'?'practices with no team':fullName(S.filter)}`:'Notes from all practices')+', newest first.';
+  $('notesList').innerHTML=list.length?list.map(p=>`<article class="note"><div class="nh"><b>${esc(pTitle(p))}</b><button class="btn small" data-open="${p.id}">Open practice</button></div>
+    <div class="ttags">${teamsOf(p).map(t=>`<span class="ttag">${esc(t)}</span>`).join('')||'<span class="ttag none">No team</span>'}</div><p>${hl(p.coachNotes)}</p></article>`).join('')
+    :`<p class="hint">${q?'No notes match that search.':'No notes yet. Write them in the Coach\'s notes box on any practice.'}</p>`;}
+$('allNotes').addEventListener('click',()=>{$('notesSearch').value='';drawNotes();$('notesSheet').hidden=false;document.body.style.overflow='hidden';$('notesSheet').scrollTop=0;});
+$('notesDone').addEventListener('click',()=>{$('notesSheet').hidden=true;document.body.style.overflow='';});
+$('notesSearch').addEventListener('input',drawNotes);
+$('notesList').addEventListener('click',e=>{const b=e.target.closest('[data-open]');if(!b)return;S.cur=b.dataset.open;save();$('notesSheet').hidden=true;document.body.style.overflow='';renderAll();
+  const c=document.querySelector('section[aria-label="Coach\'s notes"]');if(c)c.scrollIntoView({behavior:'smooth',block:'center'});});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('notesSheet').hidden){$('notesSheet').hidden=true;document.body.style.overflow='';}});
 
 /* ---------- scoreboard ---------- */
 function SB(){S.score=Object.assign({a:0,b:0,set:1,setsA:0,setsB:0,nameA:'Blue',nameB:'Orange',to:25,serve:'a',hist:[]},S.score||{});return S.score;}
