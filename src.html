@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NPJ Practice Planner</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="NPJ Practice">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#224d9f">
+<!--PWA_LINKS-->
+<style>
+/* Layout: one column practice sheet; the plan reads top to bottom like a whiteboard, and Run mode takes over the screen */
+:root{
+  --bg:#eef1f7; --surface:#ffffff; --ink:#111c33; --muted:#56627a; --line:#d2d9e6;
+  --brand:#224d9f; --brand-ink:#ffffff; --accent:#ec6536; --accent-ink:#ffffff; --sky:#4a97d3;
+  --ok:#2b7d50; --bad:#c2352b; --warn:#a66a00;
+  --t-1v1:#ec6536; --t-2v2:#224d9f; --t-queens:#c08d12; --t-scrimmage:#ad3546; --t-open:#1d877a; --t-water:#4a97d3;
+  --display:"Avenir Next Condensed","Arial Narrow","Roboto Condensed","Helvetica Neue",system-ui,sans-serif;
+  --body:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0b1222; --surface:#141e33; --ink:#e7ecf5; --muted:#97a3bb; --line:#26324c;
+  --brand:#2c5bb5; --accent:#f07a4a; --accent-ink:#160a05; --sky:#6aaee3; --ok:#5cc28a; --bad:#f0695e; --warn:#e2b136;
+  --t-1v1:#f07a4a; --t-2v2:#5b8ae0; --t-queens:#e2b136; --t-scrimmage:#d9606f; --t-open:#3bb3a4; --t-water:#6aaee3; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0b1222; --surface:#141e33; --ink:#e7ecf5; --muted:#97a3bb; --line:#26324c;
+  --brand:#2c5bb5; --accent:#f07a4a; --accent-ink:#160a05; --sky:#6aaee3; --ok:#5cc28a; --bad:#f0695e; --warn:#e2b136;
+  --t-1v1:#f07a4a; --t-2v2:#5b8ae0; --t-queens:#e2b136; --t-scrimmage:#d9606f; --t-open:#3bb3a4; --t-water:#6aaee3; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 var(--body);-webkit-tap-highlight-color:transparent;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;touch-action:manipulation}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:720px;margin:0 auto;display:grid;gap:14px;padding-block:12px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* header */
+.brandband{background:var(--brand);color:var(--brand-ink);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:12px}
+.brandband .logo{background:#fff;border-radius:8px;padding:4px;width:46px;flex:none}
+.brandband .logo img{display:block;width:100%;height:auto}
+.brandband::after{content:"";flex:none;width:6px;align-self:stretch;border-radius:3px;background:var(--accent);margin-left:auto}
+h1{font-family:var(--display);font-weight:700;font-size:1.6rem;letter-spacing:.02em;text-transform:uppercase;margin:0;line-height:1}
+.tag{font-size:.74rem;opacity:.9;letter-spacing:.06em;text-transform:uppercase}
+.tagline{margin-top:2px;font-weight:600}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:12px;min-width:0}
+.label{font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:700}
+.field{display:grid;gap:5px;min-width:0}
+.in{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;min-height:42px;width:100%;min-width:0}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media (max-width:440px){.grid3{grid-template-columns:1fr 1fr}.grid3 .span{grid-column:1/-1}}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;min-height:42px;padding:6px 12px;font-weight:700}
+.btn.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.btn.go{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-size:1.05rem;min-height:52px;flex:1}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.small{min-height:36px;padding:4px 10px;font-size:.85rem}
+.planpick{display:flex;gap:8px;align-items:center}
+.planpick select{flex:1;min-width:0;font-weight:700}
+
+/* time budget */
+.budget{display:grid;gap:6px}
+.bar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--bg);border:1px solid var(--line)}
+.bar span{display:block;height:100%;border-right:2px solid var(--surface)}
+.bar span:last-child{border-right:0}
+.btext{display:flex;justify-content:space-between;gap:8px;font-size:.88rem;font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.chip{font-size:.75rem;font-weight:800;padding:3px 9px;border-radius:99px}
+.chip.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.chip.under{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.chip.over{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+
+/* blocks */
+.blocks{display:grid;gap:10px}
+.blk{--c:var(--muted);background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--c);border-radius:12px;padding:10px 12px;display:grid;gap:8px}
+.blk-top{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center}
+.blk-bot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.when{font-variant-numeric:tabular-nums;font-weight:700;font-size:.86rem;color:var(--muted);line-height:1.15;min-width:66px}
+.when b{display:block;color:var(--ink);font-size:1rem}
+.type{border:1px solid var(--line);background:var(--bg);border-radius:8px;min-height:40px;padding:4px 8px;font-family:var(--display);font-weight:700;font-size:1.1rem;text-transform:uppercase;letter-spacing:.02em;color:var(--c);min-width:0;width:100%}
+.dur{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg)}
+.dur button{border:0;background:transparent;width:34px;height:40px;font-size:1.2rem;font-weight:800}
+.dur input{width:36px;border:0;background:transparent;text-align:center;font-weight:800;font-variant-numeric:tabular-nums;font-size:1.05rem;-moz-appearance:textfield;padding:0}
+.dur input::-webkit-outer-spin-button,.dur input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.dur small{font-size:.7rem;color:var(--muted);padding-right:2px}
+.notes{border:1px solid transparent;background:transparent;border-radius:8px;padding:6px 8px;width:100%;min-height:38px;resize:none;color:var(--ink);font-size:.92rem;line-height:1.4}
+.notes:focus{border-color:var(--line);background:var(--bg)}
+.notes::placeholder{color:var(--muted)}
+.blk-actions{display:flex;gap:4px;justify-content:flex-end;margin-left:auto}
+.blk-actions button{border:1px solid var(--line);background:var(--surface);border-radius:8px;min-width:34px;min-height:36px;font-weight:700;font-size:.8rem;padding:2px 7px}
+.blk-actions button:disabled{opacity:.35}
+.blk-actions .del[data-armed]{color:#fff;background:var(--bad);border-color:var(--bad)}
+.empty{text-align:center;color:var(--muted);padding:24px 10px}
+
+/* add */
+.adds{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.add{--c:var(--muted);border:1px solid var(--line);background:var(--surface);border-radius:10px;min-height:48px;padding:6px;font-weight:800;font-family:var(--display);text-transform:uppercase;letter-spacing:.02em;font-size:1rem;color:var(--c);display:flex;align-items:center;justify-content:center;gap:6px}
+.add::before{content:"+";font-family:var(--body);font-weight:800}
+.hint{font-size:.82rem;color:var(--muted);margin:0}
+.msg{margin:0;font-size:.85rem;font-weight:600;color:var(--ok)}
+.msg:empty{display:none}
+
+/* run mode */
+.run{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) max(14px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(14px,env(safe-area-inset-left,0px))}
+.run-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.run-top .t{font-weight:700;color:var(--muted);font-size:.9rem;font-variant-numeric:tabular-nums}
+.run-main{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;text-align:center;min-height:0;--c:var(--brand)}
+.run-type{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.03em;font-size:clamp(2.4rem,11vw,5rem);line-height:1;color:var(--c)}
+.run-clock{font-family:var(--display);font-weight:700;font-variant-numeric:tabular-nums;font-size:clamp(4.5rem,26vw,11rem);line-height:.95;letter-spacing:.01em}
+.run-clock.low{color:var(--bad)}
+.run-when{font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.run-notes{max-width:560px;font-size:1.05rem;line-height:1.45;white-space:pre-wrap}
+.run-prog{width:min(560px,100%);height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.run-prog i{display:block;height:100%;background:var(--c);width:0}
+.run-next{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;width:min(560px,100%);margin:0 auto 10px}
+.run-next span{color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.run-next b{font-family:var(--display);text-transform:uppercase;font-size:1.15rem}
+.run-ctrl{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:8px;width:min(560px,100%);margin:0 auto}
+.run-ctrl button{min-height:58px;border-radius:12px;border:1px solid var(--line);background:var(--surface);font-weight:800;font-size:1rem}
+.run-ctrl .pp{background:var(--brand);color:var(--brand-ink);border-color:var(--brand);font-size:1.15rem}
+.run-sub{display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+.run-sub button{border:1px solid var(--line);background:var(--surface);border-radius:999px;min-height:38px;padding:4px 14px;font-weight:700}
+.run-overall{display:flex;height:8px;border-radius:4px;overflow:hidden;width:min(560px,100%);margin:6px auto 0;background:var(--line)}
+.run-overall span{height:100%;opacity:.35}.run-overall span.done{opacity:1}.run-overall span.cur{opacity:1;box-shadow:inset 0 -3px 0 rgba(0,0,0,.25)}
+.done-screen{display:grid;gap:10px;justify-items:center}
+.done-screen b{font-family:var(--display);font-size:3rem;text-transform:uppercase;color:var(--ok)}
+
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:80;
+  background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;max-width:min(92vw,520px);text-align:center;transition:opacity .2s,transform .2s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="brandband">
+    <span class="logo"><img src="LOGO_DATA" alt="NPJ Volleyball logo"></span>
+    <div><h1>NPJ Practice</h1><div class="tag">North Pacific Juniors</div><div class="tag tagline">Play Better. Love the Game.</div></div>
+  </div>
+
+  <section class="card" aria-label="Practice details">
+    <div class="planpick">
+      <label class="label" for="planSel">Practice</label>
+      <select id="planSel" class="in"></select>
+    </div>
+    <div class="row">
+      <button class="btn small primary" id="newPlan">+ New practice</button>
+      <button class="btn small" id="dupPlan">Duplicate</button>
+      <button class="btn small danger" id="delPlan">Delete</button>
+    </div>
+    <label class="field"><span class="label">Name</span><input id="pName" class="in" maxlength="40" placeholder="e.g. Tuesday practice"></label>
+    <div class="grid3">
+      <label class="field"><span class="label">Date</span><input id="pDate" class="in" type="date"></label>
+      <label class="field"><span class="label">Start time</span><input id="pStart" class="in" type="time" step="300"></label>
+      <label class="field span"><span class="label">Practice length</span>
+        <select id="pLen" class="in"><option value="60">1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option><option value="150">2.5 hours</option><option value="180">3 hours</option></select></label>
+    </div>
+    <div class="budget" id="budget"></div>
+  </section>
+
+  <section class="blocks" id="blocks" aria-label="Practice blocks"></section>
+
+  <section class="card" aria-label="Add a block">
+    <div class="label">Add a block</div>
+    <div class="adds" id="adds"></div>
+    <p class="hint">Blocks change in 5-minute steps. Tap a number to type any length.</p>
+  </section>
+
+  <section class="card" aria-label="Run and share">
+    <div class="row"><button class="btn go" id="startRun">▶ Start practice</button></div>
+    <div class="row">
+      <button class="btn small" id="copyPlan">Copy plan</button>
+      <button class="btn small" id="saveDefault">Make this my default</button>
+      <button class="btn small" id="resetDefault">Restore NPJ default</button>
+    </div>
+    <p class="msg" id="msg" aria-live="polite"></p>
+    <p class="hint">Copy plan puts the schedule on your clipboard so you can text it to your assistant coaches. Practices are saved on this device.</p>
+  </section>
+</main>
+
+<section class="run" id="run" hidden aria-label="Practice timer"></section>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+const TYPES={
+  '1v1':{label:'1v1',desc:'Individual reps: ball control, defense and reading one opponent.'},
+  '2v2':{label:'2v2',desc:'Small-sided play: passing, communication and covering the court as a pair.'},
+  'queens':{label:'Queens',desc:'Queen of the court: winners stay on, challengers rotate in. Fast and competitive.'},
+  'scrimmage':{label:'Scrimmage',desc:'Game play: rotations, serve receive and transition.'},
+  'open':{label:'Open',desc:"Coach's discretion: warm-up, skill work, team talk or whatever practice needs."},
+  'water':{label:'Water break',desc:'Hydrate and reset.'}
+};
+const ORDER=['1v1','2v2','queens','scrimmage','open','water'];
+const NPJ_DEFAULT=[['open',15,'Warm-up'],['1v1',15,''],['water',5,''],['2v2',20,''],['queens',20,''],['water',5,''],['scrimmage',30,''],['open',10,'Cool down and team talk']];
+const KEY='npjPractice.v1';
+const uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $=id=>document.getElementById(id);
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+
+function blocksFrom(tpl){return tpl.map(([type,min,notes])=>({id:uid(),type,min,notes:notes||''}));}
+function newPlan(name){const tpl=S.myDefault||NPJ_DEFAULT;return {id:uid(),name:name||'Practice',date:today(),start:S.lastStart||'18:00',len:120,blocks:blocksFrom(tpl)};}
+
+let S={plans:[],cur:null,myDefault:null,lastStart:null,run:null,sound:true};
+try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&Array.isArray(o.plans))S=Object.assign(S,o);}}catch(e){}
+if(!S.plans.length){const p=newPlan('Practice');S.plans.push(p);S.cur=p.id;}
+if(!S.plans.find(p=>p.id===S.cur))S.cur=S.plans[0].id;
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+const plan=()=>S.plans.find(p=>p.id===S.cur);
+
+/* time helpers */
+function toMin(hhmm){const [h,m]=(hhmm||'18:00').split(':').map(Number);return (h||0)*60+(m||0);}
+function clock(min){min=((Math.round(min)%1440)+1440)%1440;const h=Math.floor(min/60),m=min%60,ap=h>=12?'PM':'AM',h12=h%12||12;return `${h12}:${String(m).padStart(2,'0')} ${ap}`;}
+function clockShort(min){return clock(min).replace(' AM','').replace(' PM','');}
+function total(p){return p.blocks.reduce((a,b)=>a+(+b.min||0),0);}
+function dateLabel(d){if(!d)return '';const x=new Date(d+'T12:00');return isNaN(x)?d:x.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});}
+
+function toast(t){const el=$('toast');el.textContent=t;el.classList.add('show');clearTimeout(el._h);el._h=setTimeout(()=>el.classList.remove('show'),3200);}
+function msg(t){$('msg').textContent=t||'';clearTimeout(msg._h);if(t)msg._h=setTimeout(()=>$('msg').textContent='',4000);}
+
+/* ---------- render ---------- */
+function renderPicker(){
+  const sorted=S.plans.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  $('planSel').innerHTML=sorted.map(p=>`<option value="${p.id}"${p.id===S.cur?' selected':''}>${esc((p.name||'Practice')+(p.date?' · '+dateLabel(p.date):''))}</option>`).join('');
+  const p=plan();$('pName').value=p.name||'';$('pDate').value=p.date||'';$('pStart').value=p.start||'18:00';$('pLen').value=String(p.len||120);
+}
+function renderBudget(){
+  const p=plan(),t=total(p),L=+p.len||120,diff=L-t,scale=Math.max(L,t);
+  const segs=p.blocks.map(b=>`<span style="width:${(b.min/scale*100).toFixed(2)}%;background:var(--t-${b.type})" title="${esc(TYPES[b.type].label)} ${b.min} min"></span>`).join('');
+  const chip=diff===0?'<span class="chip ok">Fits exactly</span>':diff>0?`<span class="chip under">${diff} min left to plan</span>`:`<span class="chip over">${-diff} min over</span>`;
+  const st=toMin(p.start);
+  $('budget').innerHTML=`<div class="bar" aria-hidden="true">${segs}</div>
+    <div class="btext"><span><b>${t}</b> of ${L} min planned · ${clock(st)} to ${clock(st+t)}</span>${chip}</div>`;
+}
+function renderBlocks(){
+  const p=plan(),st=toMin(p.start);let at=st;
+  if(!p.blocks.length){$('blocks').innerHTML='<div class="card empty">No blocks yet. Add one below.</div>';return;}
+  $('blocks').innerHTML=p.blocks.map((b,i)=>{const from=at;at+=+b.min||0;
+    return `<article class="blk" style="--c:var(--t-${b.type})" data-id="${b.id}">
+      <div class="blk-top">
+        <div class="when"><b>${clockShort(from)}</b>${clockShort(at)}</div>
+        <select class="type" data-f="type" aria-label="Block type">${ORDER.map(k=>`<option value="${k}"${k===b.type?' selected':''}>${TYPES[k].label}</option>`).join('')}</select>
+      </div>
+      <textarea class="notes" data-f="notes" rows="1" placeholder="${esc(TYPES[b.type].desc)}" aria-label="Notes">${esc(b.notes)}</textarea>
+      <div class="blk-bot">
+      <div class="dur"><button data-a="minus" aria-label="5 minutes less">−</button><input data-f="min" type="number" inputmode="numeric" min="1" max="120" value="${b.min}" aria-label="Minutes"><small>min</small><button data-a="plus" aria-label="5 minutes more">+</button></div>
+      <div class="blk-actions">
+        <button data-a="up" aria-label="Move up"${i===0?' disabled':''}>↑</button>
+        <button data-a="down" aria-label="Move down"${i===p.blocks.length-1?' disabled':''}>↓</button>
+        <button data-a="copy" aria-label="Duplicate block">Copy</button>
+        <button data-a="del" class="del" aria-label="Delete block">Delete</button>
+      </div></div></article>`;}).join('');
+  document.querySelectorAll('.notes').forEach(grow);
+}
+function grow(t){t.style.height='auto';t.style.height=Math.min(240,t.scrollHeight+2)+'px';}
+function renderAdds(){$('adds').innerHTML=ORDER.map(k=>`<button class="add" data-add="${k}" style="--c:var(--t-${k})" title="${esc(TYPES[k].desc)}">${TYPES[k].label}</button>`).join('');}
+function renderAll(){renderPicker();renderBudget();renderBlocks();}
+function refreshTimes(){const p=plan();let at=toMin(p.start);document.querySelectorAll('.blk').forEach((el,i)=>{const b=p.blocks[i];const from=at;at+=+b.min||0;el.querySelector('.when').innerHTML=`<b>${clockShort(from)}</b>${clockShort(at)}`;});renderBudget();}
+
+/* ---------- plan events ---------- */
+$('planSel').addEventListener('change',e=>{S.cur=e.target.value;save();renderAll();});
+$('pName').addEventListener('input',e=>{plan().name=e.target.value;save();clearTimeout(window.__pn);window.__pn=setTimeout(renderPicker,500);});
+$('pDate').addEventListener('change',e=>{plan().date=e.target.value;save();renderPicker();});
+$('pStart').addEventListener('change',e=>{plan().start=e.target.value||'18:00';S.lastStart=plan().start;save();refreshTimes();});
+$('pLen').addEventListener('change',e=>{plan().len=+e.target.value;save();renderBudget();});
+$('newPlan').addEventListener('click',()=>{const p=newPlan('Practice');S.plans.push(p);S.cur=p.id;save();renderAll();$('pName').focus();$('pName').select();msg('New practice made from your default plan.');});
+$('dupPlan').addEventListener('click',()=>{const o=plan(),p=JSON.parse(JSON.stringify(o));p.id=uid();p.name=(o.name||'Practice')+' (copy)';p.date=today();p.blocks.forEach(b=>b.id=uid());S.plans.push(p);S.cur=p.id;save();renderAll();msg('Practice duplicated.');});
+$('delPlan').addEventListener('click',e=>{const b=e.currentTarget;
+  if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Tap to delete';setTimeout(()=>{delete b.dataset.armed;b.textContent='Delete';},3000);return;}
+  delete b.dataset.armed;b.textContent='Delete';
+  S.plans=S.plans.filter(p=>p.id!==S.cur);if(!S.plans.length)S.plans.push(newPlan('Practice'));S.cur=S.plans[0].id;save();renderAll();msg('Practice deleted.');});
+
+/* ---------- block events ---------- */
+const blkOf=el=>{const a=el.closest('.blk');if(!a)return null;const p=plan();const i=p.blocks.findIndex(b=>b.id===a.dataset.id);return i<0?null:{p,i,b:p.blocks[i]};};
+$('blocks').addEventListener('click',e=>{const btn=e.target.closest('button[data-a]');if(!btn)return;const o=blkOf(btn);if(!o)return;const {p,i,b}=o,a=btn.dataset.a;
+  if(a==='minus'||a==='plus'){const step=5,v=+b.min||0;b.min=a==='plus'?Math.min(120,(v%step?Math.ceil(v/step)*step:v+step)):Math.max(1,(v%step?Math.floor(v/step)*step:v-step)||1);
+    btn.parentNode.querySelector('input').value=b.min;save();refreshTimes();return;}
+  if(a==='up'&&i>0){[p.blocks[i-1],p.blocks[i]]=[p.blocks[i],p.blocks[i-1]];}
+  else if(a==='down'&&i<p.blocks.length-1){[p.blocks[i+1],p.blocks[i]]=[p.blocks[i],p.blocks[i+1]];}
+  else if(a==='copy'){p.blocks.splice(i+1,0,Object.assign({},b,{id:uid()}));}
+  else if(a==='del'){if(!btn.dataset.armed){btn.dataset.armed='1';btn.textContent='Tap to delete';setTimeout(()=>{if(btn.isConnected){delete btn.dataset.armed;btn.textContent='Delete';}},3000);return;}p.blocks.splice(i,1);}
+  else return;
+  save();renderBlocks();renderBudget();});
+$('blocks').addEventListener('input',e=>{const f=e.target.dataset.f;if(!f)return;const o=blkOf(e.target);if(!o)return;
+  if(f==='notes'){o.b.notes=e.target.value;grow(e.target);save();}
+  else if(f==='min'){const v=parseInt(e.target.value,10);if(v>=1&&v<=180){o.b.min=v;save();refreshTimes();}}});
+$('blocks').addEventListener('change',e=>{const f=e.target.dataset.f;if(!f)return;const o=blkOf(e.target);if(!o)return;
+  if(f==='type'){o.b.type=e.target.value;save();renderBlocks();renderBudget();}
+  else if(f==='min'){const v=parseInt(e.target.value,10);o.b.min=v>=1&&v<=180?v:(o.b.min||5);e.target.value=o.b.min;save();refreshTimes();}});
+$('adds').addEventListener('click',e=>{const b=e.target.closest('[data-add]');if(!b)return;const p=plan(),k=b.dataset.add;
+  const left=(+p.len||120)-total(p),min=k==='water'?5:Math.max(5,Math.min(15,left>0?left:15));
+  p.blocks.push({id:uid(),type:k,min,notes:''});save();renderBlocks();renderBudget();
+  const last=document.querySelector('.blk:last-of-type');if(last)last.scrollIntoView({behavior:'smooth',block:'center'});});
+
+/* ---------- share and defaults ---------- */
+function planText(p){let at=toMin(p.start);const lines=[`NPJ Practice: ${p.name||'Practice'}${p.date?' · '+dateLabel(p.date):''}`,`${clock(at)} to ${clock(at+total(p))} (${total(p)} min)`,''];
+  p.blocks.forEach(b=>{const from=at;at+=+b.min;lines.push(`${clockShort(from)}–${clockShort(at)}  ${TYPES[b.type].label} (${b.min} min)${b.notes?' · '+b.notes.replace(/\s+/g,' '):''}`);});
+  return lines.join('\n');}
+$('copyPlan').addEventListener('click',async()=>{const t=planText(plan());
+  try{await navigator.clipboard.writeText(t);msg('Plan copied. Paste it into a text or email.');}
+  catch(e){msg('Copy was blocked here. Select the text below and copy it.');let pre=$('copyFallback');if(!pre){pre=document.createElement('pre');pre.id='copyFallback';pre.style.cssText='white-space:pre-wrap;user-select:text;background:var(--bg);padding:10px;border-radius:8px;margin:0';$('msg').after(pre);}pre.textContent=t;}});
+$('saveDefault').addEventListener('click',()=>{S.myDefault=plan().blocks.map(b=>[b.type,b.min,b.notes]);save();msg('Saved. New practices will start from this plan.');});
+$('resetDefault').addEventListener('click',e=>{const b=e.currentTarget;
+  if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Tap to replace this plan';setTimeout(()=>{delete b.dataset.armed;b.textContent='Restore NPJ default';},3000);return;}
+  delete b.dataset.armed;b.textContent='Restore NPJ default';S.myDefault=null;plan().blocks=blocksFrom(NPJ_DEFAULT);plan().len=120;save();renderAll();msg('This practice now uses the NPJ default plan.');});
+
+/* ---------- run mode ---------- */
+let tickH=null,wake=null,actx=null,lastWarn=-1;
+function beep(times,freq){if(!S.sound)return;try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+  for(let k=0;k<times;k++){const o=actx.createOscillator(),g=actx.createGain(),t0=actx.currentTime+k*0.32;o.frequency.value=freq||880;o.type='sine';
+    g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(0.5,t0+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t0+0.25);o.connect(g).connect(actx.destination);o.start(t0);o.stop(t0+0.27);}}catch(e){}
+  try{if(navigator.vibrate)navigator.vibrate(times>1?[200,120,200,120,200]:150);}catch(e){}}
+function runPlan(){return S.run&&S.plans.find(p=>p.id===S.run.planId);}
+function remainingMs(){const r=S.run;return r.paused?r.left:Math.max(0,r.endsAt-Date.now());}
+function startRun(){const p=plan();if(!p.blocks.length){msg('Add a block first.');return;}
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();}catch(e){}
+  S.run={planId:p.id,idx:0,paused:false,endsAt:Date.now()+p.blocks[0].min*60000,left:0,done:false};save();openRun();}
+function openRun(){$('run').hidden=false;document.body.style.overflow='hidden';
+  try{if(navigator.wakeLock)navigator.wakeLock.request('screen').then(w=>wake=w).catch(()=>{});}catch(e){}
+  clearInterval(tickH);tickH=setInterval(tick,250);drawRun();}
+function closeRun(){S.run=null;save();clearInterval(tickH);$('run').hidden=true;document.body.style.overflow='';try{if(wake){wake.release();wake=null;}}catch(e){}}
+function advance(silent){const p=runPlan(),r=S.run;if(!p)return closeRun();
+  if(r.idx>=p.blocks.length-1){r.done=true;r.paused=true;r.left=0;save();if(!silent)beep(3,660);drawRun();return;}
+  const carry=r.paused?0:Math.min(0,r.endsAt-Date.now());r.idx++;
+  const ms=p.blocks[r.idx].min*60000;if(r.paused)r.left=ms;else r.endsAt=Date.now()+ms+carry;lastWarn=-1;save();
+  if(!silent){beep(3,880);toast(`Next: ${TYPES[p.blocks[r.idx].type].label}`);}drawRun();}
+function tick(){const r=S.run;if(!r||r.done)return;const left=remainingMs();
+  if(!r.paused){if(left<=0){advance(false);return;}
+    if(left<=60000&&left>59000&&lastWarn!==r.idx){lastWarn=r.idx;beep(1,660);}}
+  drawClock();}
+function fmt(ms){const s=Math.ceil(ms/1000),m=Math.floor(s/60);return `${m}:${String(s%60).padStart(2,'0')}`;}
+function drawClock(){const r=S.run,p=runPlan();if(!r||!p||r.done)return;const b=p.blocks[r.idx],left=remainingMs(),tot=b.min*60000;
+  const c=$('rClock');if(c){c.textContent=fmt(left);c.classList.toggle('low',left<=60000);}
+  const g=$('rProg');if(g)g.style.width=Math.min(100,Math.max(0,100*(1-left/tot))).toFixed(1)+'%';
+  const pp=$('rPP');if(pp)pp.textContent=r.paused?'▶ Resume':'❚❚ Pause';
+  const now=$('rNow');if(now)now.textContent=new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});}
+function drawRun(){const r=S.run,p=runPlan();if(!r||!p){closeRun();return;}
+  const el=$('run');
+  if(r.done){el.innerHTML=`<div class="run-top"><span class="t">${esc(p.name||'Practice')}</span><button class="btn small" data-r="close">Close</button></div>
+    <div class="run-main"><div class="done-screen"><b>Practice done</b><p>${p.blocks.length} blocks · ${total(p)} minutes</p><p>Play Better. Love the Game.</p><button class="btn primary" data-r="close">Back to the plan</button></div></div>`;return;}
+  const b=p.blocks[r.idx],nx=p.blocks[r.idx+1];let at=toMin(p.start);for(let k=0;k<r.idx;k++)at+=p.blocks[k].min;
+  const tot=total(p);
+  const overall=p.blocks.map((x,k)=>`<span class="${k<r.idx?'done':k===r.idx?'cur':''}" style="width:${(x.min/tot*100).toFixed(2)}%;background:var(--t-${x.type})"></span>`).join('');
+  el.innerHTML=`<div class="run-top"><span class="t">Block ${r.idx+1} of ${p.blocks.length} · <span id="rNow"></span></span>
+      <div class="row"><button class="btn small" data-r="sound" aria-pressed="${S.sound}">${S.sound?'🔔 Sound on':'🔕 Sound off'}</button><button class="btn small" data-r="end">End</button></div></div>
+    <div class="run-overall" aria-hidden="true">${overall}</div>
+    <div class="run-main" style="--c:var(--t-${b.type})">
+      <div class="run-when">${clock(at)} – ${clock(at+b.min)} · ${b.min} min</div>
+      <div class="run-type">${esc(TYPES[b.type].label)}</div>
+      <div class="run-clock" id="rClock" aria-live="off"></div>
+      <div class="run-prog"><i id="rProg"></i></div>
+      <div class="run-notes">${esc(b.notes||TYPES[b.type].desc)}</div>
+    </div>
+    <div class="run-next">${nx?`<span>Up next</span><b style="color:var(--t-${nx.type})">${esc(TYPES[nx.type].label)}</b><span>${nx.min} min</span>`:'<span>Last block</span><b>Finish strong</b><span></span>'}</div>
+    <div class="run-ctrl"><button data-r="back" aria-label="Previous block">◀ Back</button><button class="pp" id="rPP" data-r="pp"></button><button data-r="next" aria-label="Next block">Next ▶</button></div>
+    <div class="run-sub"><button data-r="minus">−1 min</button><button data-r="plus">+1 min</button><button data-r="restart">Restart block</button></div>`;
+  drawClock();}
+$('run').addEventListener('click',e=>{const b=e.target.closest('[data-r]');if(!b)return;const a=b.dataset.r,r=S.run,p=runPlan();
+  try{if(actx&&actx.state==='suspended')actx.resume();}catch(x){}
+  if(a==='close'){closeRun();return;}
+  if(a==='end'){if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Tap to end';setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent='End';}},3000);return;}closeRun();return;}
+  if(!r||!p)return;
+  if(a==='sound'){S.sound=!S.sound;save();drawRun();if(S.sound)beep(1,880);return;}
+  if(a==='pp'){if(r.paused){r.paused=false;r.endsAt=Date.now()+r.left;}else{r.left=remainingMs();r.paused=true;}save();drawClock();return;}
+  if(a==='next'){advance(true);return;}
+  if(a==='back'){if(r.idx>0)r.idx--;const ms=p.blocks[r.idx].min*60000;if(r.paused)r.left=ms;else r.endsAt=Date.now()+ms;lastWarn=-1;save();drawRun();return;}
+  if(a==='restart'){const ms=p.blocks[r.idx].min*60000;if(r.paused)r.left=ms;else r.endsAt=Date.now()+ms;lastWarn=-1;save();drawClock();return;}
+  if(a==='plus'||a==='minus'){const d=a==='plus'?60000:-60000;if(r.paused)r.left=Math.max(1000,r.left+d);else r.endsAt=Math.max(Date.now()+1000,r.endsAt+d);save();drawClock();return;}});
+$('startRun').addEventListener('click',startRun);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.run&&!S.run.done){
+  /* catch up on blocks that finished while the phone was locked */
+  const p=runPlan();let guard=0;while(S.run&&!S.run.paused&&!S.run.done&&S.run.endsAt<=Date.now()&&guard++<50){
+    if(S.run.idx>=p.blocks.length-1){S.run.done=true;break;}const over=Date.now()-S.run.endsAt;S.run.idx++;S.run.endsAt=Date.now()+p.blocks[S.run.idx].min*60000-over;}
+  save();drawRun();
+  try{if(navigator.wakeLock&&!wake)navigator.wakeLock.request('screen').then(w=>wake=w).catch(()=>{});}catch(e){}}});
+document.addEventListener('keydown',e=>{if($('run').hidden)return;if(e.key===' '){e.preventDefault();$('rPP')&&$('rPP').click();}else if(e.key==='ArrowRight'){advance(true);}});
+
+renderAdds();renderAll();
+if(S.run&&runPlan()){openRun();document.dispatchEvent(new Event('visibilitychange'));}
+})();
+</script>
+<!--SW_REGISTER-->
+</body>
+</html>
