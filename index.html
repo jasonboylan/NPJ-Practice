@@ -165,6 +165,55 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
   background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;max-width:min(92vw,520px);text-align:center;transition:opacity .2s,transform .2s}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
+/* scoreboard: a digital version of the courtside flip scoreboard */
+.sb{position:fixed;inset:0;z-index:70;background:#141821;color:#fff;display:flex;flex-direction:column;gap:10px;overflow:hidden;
+  padding:calc(env(safe-area-inset-top,0px) + 10px) max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(12px,env(safe-area-inset-left,0px))}
+.sb-top{display:flex;align-items:center;gap:8px}
+.sb-top .sp{flex:1;text-align:center;font-weight:700;color:#aab3c5;font-variant-numeric:tabular-nums;font-size:.9rem}
+.sb button{font:inherit;color:inherit}
+.sb .ghost{border:1px solid #3a4253;background:#1f2533;border-radius:10px;min-height:42px;padding:4px 12px;font-weight:700;color:#fff}
+.sb-board{flex:1;display:grid;grid-template-columns:1fr auto 1fr;gap:10px;min-height:0;align-items:stretch}
+.sb-team{display:grid;grid-template-rows:auto 1fr auto;gap:8px;min-width:0}
+.sb-name{width:100%;border:0;border-radius:8px;background:#fff;color:#1b1f27;text-align:center;font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.04em;font-size:clamp(1rem,4vw,1.6rem);padding:6px 4px;min-width:0}
+.sb-card{--tc:#2a63c9;position:relative;border:0;border-radius:12px;background:var(--tc);display:grid;place-items:center;min-height:0;overflow:hidden;touch-action:manipulation;
+  box-shadow:inset 0 -6px 0 rgba(0,0,0,.18),0 6px 16px rgba(0,0,0,.35);-webkit-user-select:none;user-select:none;perspective:600px;container-type:size}
+.sb-card::after{content:"";position:absolute;left:0;right:0;top:50%;height:3px;background:rgba(0,0,0,.35);box-shadow:0 1px 0 rgba(255,255,255,.12)}
+.sb-card b{font-family:"Arial Narrow","Helvetica Neue",Arial,sans-serif;font-weight:800;color:#fff;font-size:clamp(3rem,26vw,16rem);font-size:min(78cqw,70cqh);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;display:block}
+.sb-card.flip b{animation:sbflip .28s ease-out}
+@keyframes sbflip{0%{transform:rotateX(70deg);opacity:.2}100%{transform:rotateX(0);opacity:1}}
+.sb-card small{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-weight:800;font-size:.75rem;letter-spacing:.1em;opacity:.8}
+.sb-team.b .sb-card{--tc:#e4572e}
+.sb-row{display:flex;gap:8px;align-items:center;justify-content:center}
+.sb-row .ghost{min-width:56px}
+.sb-row{flex-wrap:nowrap}
+.sb-sets{font-weight:800;font-size:.85rem;color:#cfd6e3;letter-spacing:.04em;white-space:nowrap}
+.sb-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:#0c0f15;border-radius:12px;padding:10px 8px;min-width:76px}
+.sb-set{font-family:"Arial Narrow","Helvetica Neue",Arial,sans-serif;font-weight:800;color:#f7d931;font-size:clamp(2.6rem,12vw,5rem);line-height:1}
+.sb-mid .lbl{font-weight:800;font-size:.72rem;letter-spacing:.1em;text-align:center;line-height:1.2}
+.sb-mid select{background:#1f2533;color:#fff;border:1px solid #3a4253;border-radius:8px;min-height:36px;font-weight:700;padding:2px 4px}
+.sb-serve{width:14px;height:14px;border-radius:50%;background:#f7d931;display:inline-block;margin-left:6px;vertical-align:middle;box-shadow:0 0 0 2px rgba(0,0,0,.3)}
+.sb-bottom{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.sb-win{position:absolute;inset:0;background:rgba(10,12,18,.82);display:grid;place-items:center;z-index:2;padding:20px}
+.sb-win div{background:#1f2533;border:1px solid #3a4253;border-radius:16px;padding:20px;display:grid;gap:12px;text-align:center;max-width:360px}
+.sb-win b{font-family:var(--display);font-size:2rem;text-transform:uppercase}
+.sb-win .go{background:#f7d931;color:#141821;border:0;border-radius:12px;min-height:52px;font-weight:800;font-size:1.1rem}
+@media (orientation:landscape) and (max-height:500px){.sb-name{font-size:1rem;padding:3px}.sb{gap:6px}}
+@media (prefers-reduced-motion:reduce){.sb-card.flip b{animation:none}}
+/* full size: scores only, for showing to players and parents */
+.sb.show{gap:8px;padding-top:calc(env(safe-area-inset-top,0px) + 8px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 52px)}
+.sb.show .sb-top,.sb.show .sb-bottom,.sb.show .sb-row .ghost,.sb.show .sb-mid select,.sb.show .sb-mid .lbl:not(.keep),.sb.show .sb-card small{display:none}
+.sb.show .sb-board{gap:8px}
+.sb.show .sb-name{pointer-events:none;font-size:clamp(1.2rem,5vw,2.6rem)}
+.sb.show .sb-card b{font-size:min(80cqw,78cqh)}
+.sb.show .sb-sets{font-size:clamp(.9rem,2.6vw,1.4rem)}
+.sb.show .sb-set{font-size:clamp(3rem,14vw,8rem)}
+.sb-exit{display:none}
+.sb.show .sb-exit{display:block;position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 6px);left:50%;transform:translateX(-50%);z-index:3;
+  border:1px solid #3a4253;background:rgba(31,37,51,.85);color:#fff;border-radius:999px;min-height:36px;padding:4px 12px;font-weight:700;font-size:.85rem}
+.sb.show .sb-team:first-child .sb-name{margin-right:0}
+.blk-actions .sbopen{color:#fff;background:var(--t-scrimmage);border-color:var(--t-scrimmage)}
+.run-sub .sbopen{background:var(--t-scrimmage);color:#fff;border-color:var(--t-scrimmage)}
+
 </style>
 </head>
 <body>
@@ -233,6 +282,7 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
   </div>
 </section>
 <section class="run" id="run" hidden aria-label="Practice timer"></section>
+<section class="sb" id="sb" hidden aria-label="Scoreboard"></section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -340,7 +390,7 @@ function renderBlocks(){
       <div class="blk-actions">
         <button data-a="up" aria-label="Move up"${i===0?' disabled':''}>↑</button>
         <button data-a="down" aria-label="Move down"${i===p.blocks.length-1?' disabled':''}>↓</button>
-        <button data-a="copy" aria-label="Duplicate block">Copy</button>
+        ${b.type==='scrimmage'?'<button data-a="score" class="sbopen" aria-label="Open scoreboard">Score</button>':''}<button data-a="copy" aria-label="Duplicate block">Copy</button>
         <button data-a="del" class="del" aria-label="Delete block">Delete</button>
       </div></div></article>`;}).join('');
   document.querySelectorAll('.notes').forEach(grow);
@@ -405,6 +455,7 @@ $('blocks').addEventListener('click',e=>{const btn=e.target.closest('button[data
     btn.parentNode.querySelector('input').value=b.min;save();refreshTimes();return;}
   if(a==='up'&&i>0){[p.blocks[i-1],p.blocks[i]]=[p.blocks[i],p.blocks[i-1]];}
   else if(a==='down'&&i<p.blocks.length-1){[p.blocks[i+1],p.blocks[i]]=[p.blocks[i],p.blocks[i+1]];}
+  else if(a==='score'){openSB();return;}
   else if(a==='copy'){p.blocks.splice(i+1,0,Object.assign({},b,{id:uid()}));}
   else if(a==='del'){if(!btn.dataset.armed){btn.dataset.armed='1';btn.textContent='Tap to delete';setTimeout(()=>{if(btn.isConnected){delete btn.dataset.armed;btn.textContent='Delete';}},3000);return;}p.blocks.splice(i,1);}
   else return;
@@ -481,11 +532,12 @@ function drawRun(){const r=S.run,p=runPlan();if(!r||!p){closeRun();return;}
     </div>
     <div class="run-next">${nx?`<span>Up next</span><b style="color:var(--t-${nx.type})">${esc(TYPES[nx.type].label)}</b><span>${nx.min} min</span>`:'<span>Last block</span><b>Finish strong</b><span></span>'}</div>
     <div class="run-ctrl"><button data-r="back" aria-label="Previous block">◀ Back</button><button class="pp" id="rPP" data-r="pp"></button><button data-r="next" aria-label="Next block">Next ▶</button></div>
-    <div class="run-sub"><button data-r="minus">−1 min</button><button data-r="plus">+1 min</button><button data-r="restart">Restart block</button></div>`;
+    <div class="run-sub">${b.type==='scrimmage'?'<button data-r="score" class="sbopen">Scoreboard</button>':''}<button data-r="minus">−1 min</button><button data-r="plus">+1 min</button><button data-r="restart">Restart block</button></div>`;
   drawClock();}
 $('run').addEventListener('click',e=>{const b=e.target.closest('[data-r]');if(!b)return;const a=b.dataset.r,r=S.run,p=runPlan();
   try{if(actx&&actx.state==='suspended')actx.resume();}catch(x){}
   if(a==='close'){closeRun();return;}
+  if(a==='score'){openSB();return;}
   if(a==='end'){if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Tap to end';setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent='End';}},3000);return;}closeRun();return;}
   if(!r||!p)return;
   if(a==='sound'){S.sound=!S.sound;save();drawRun();if(S.sound)beep(1,880);return;}
@@ -502,6 +554,50 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.run&&!S
   save();drawRun();
   try{if(navigator.wakeLock&&!wake)navigator.wakeLock.request('screen').then(w=>wake=w).catch(()=>{});}catch(e){}}});
 document.addEventListener('keydown',e=>{if($('run').hidden)return;if(e.key===' '){e.preventDefault();$('rPP')&&$('rPP').click();}else if(e.key==='ArrowRight'){advance(true);}});
+
+
+/* ---------- scoreboard ---------- */
+function SB(){S.score=Object.assign({a:0,b:0,set:1,setsA:0,setsB:0,nameA:'Blue',nameB:'Orange',to:25,serve:'a',hist:[]},S.score||{});return S.score;}
+function setOver(sc){const t=sc.set>=3&&sc.to===25?15:sc.to;return (sc.a>=t||sc.b>=t)&&Math.abs(sc.a-sc.b)>=2;}
+function openSB(){$('sb').hidden=false;document.body.style.overflow='hidden';drawSB();
+  try{if(navigator.wakeLock&&!wake)navigator.wakeLock.request('screen').then(w=>wake=w).catch(()=>{});}catch(e){}}
+function closeSB(){$('sb').classList.remove('show');$('sb').hidden=true;if($('run').hidden)document.body.style.overflow='';}
+function sbTimer(){const r=S.run,p=runPlan();if(!r||!p||r.done)return '';const b=p.blocks[r.idx];return `${TYPES[b.type].label} · ${fmt(remainingMs())} left`;}
+function drawSB(flip){const sc=SB(),t=sc.set>=3&&sc.to===25?15:sc.to,over=setOver(sc),lead=sc.a>sc.b?'a':'b';
+  $('sb').innerHTML=`<div class="sb-top"><button class="ghost" data-sb="close">✕ Close</button><span class="sp" id="sbTime">${esc(sbTimer())}</span><button class="ghost" data-sb="swap" aria-label="Swap sides">⇄ Swap</button><button class="ghost" data-sb="show" aria-label="Full size scoreboard">⤢ Full size</button></div>
+  <button class="sb-exit" data-sb="unshow">✕ Exit full size</button>
+  <div class="sb-board">
+    <div class="sb-team a"><input class="sb-name" data-sbname="nameA" value="${esc(sc.nameA)}" maxlength="14" aria-label="Left team name">
+      <button class="sb-card${flip==='a'?' flip':''}" data-sb="a+" aria-label="Point for ${esc(sc.nameA)}, now ${sc.a}"><b>${sc.a}</b><small>TAP +1</small></button>
+      <div class="sb-row"><button class="ghost" data-sb="a-" aria-label="Take a point from ${esc(sc.nameA)}">−1</button><span class="sb-sets">SETS ${sc.setsA}${sc.serve==='a'?'<span class="sb-serve" title="Serving"></span>':''}</span></div></div>
+    <div class="sb-mid"><span class="lbl keep">SET</span><span class="sb-set">${sc.set}</span>
+      <span class="lbl">PLAY TO</span><select data-sbto aria-label="Points to win a set">${[25,21,15].map(n=>`<option value="${n}"${sc.to===n?' selected':''}>${n}</option>`).join('')}</select>
+      ${t!==sc.to?`<span class="lbl">Set ${sc.set} to ${t}</span>`:''}</div>
+    <div class="sb-team b"><input class="sb-name" data-sbname="nameB" value="${esc(sc.nameB)}" maxlength="14" aria-label="Right team name">
+      <button class="sb-card${flip==='b'?' flip':''}" data-sb="b+" aria-label="Point for ${esc(sc.nameB)}, now ${sc.b}"><b>${sc.b}</b><small>TAP +1</small></button>
+      <div class="sb-row"><span class="sb-sets">${sc.serve==='b'?'<span class="sb-serve" title="Serving" style="margin:0 6px 0 0"></span>':''}SETS ${sc.setsB}</span><button class="ghost" data-sb="b-" aria-label="Take a point from ${esc(sc.nameB)}">−1</button></div></div>
+  </div>
+  <div class="sb-bottom"><button class="ghost" data-sb="undo">↶ Undo</button><button class="ghost" data-sb="next">Next set</button><button class="ghost" data-sb="reset">Reset all</button></div>
+  ${over?`<div class="sb-win"><div><span class="lbl" style="color:#aab3c5">Set ${sc.set} · ${sc.a}–${sc.b}</span><b>${esc(lead==='a'?sc.nameA:sc.nameB)} wins the set</b>
+    <button class="go" data-sb="next">Start set ${sc.set+1}</button><button class="ghost" data-sb="undo">↶ Undo last point</button></div></div>`:''}`;}
+$('sb').addEventListener('click',e=>{const b=e.target.closest('[data-sb]');if(!b)return;const a=b.dataset.sb,sc=SB();
+  const push=()=>{sc.hist.push({a:sc.a,b:sc.b,set:sc.set,setsA:sc.setsA,setsB:sc.setsB,serve:sc.serve});if(sc.hist.length>200)sc.hist.shift();};
+  if(a==='close'){closeSB();return;}
+  if(a==='show'){$('sb').classList.add('show');try{const el=$('sb'),rf=el.requestFullscreen||el.webkitRequestFullscreen;if(rf){const r=rf.call(el);if(r&&r.catch)r.catch(()=>{});}}catch(x){}return;}
+  if(a==='unshow'){$('sb').classList.remove('show');try{const fe=document.fullscreenElement||document.webkitFullscreenElement,ex=document.exitFullscreen||document.webkitExitFullscreen;if(fe&&ex){const r=ex.call(document);if(r&&r.catch)r.catch(()=>{});}}catch(x){}return;}
+  if(a==='a+'||a==='b+'){if(setOver(sc))return;push();const k=a[0];sc[k]++;sc.serve=k;save();drawSB(k);try{if(navigator.vibrate)navigator.vibrate(30);}catch(x){}return;}
+  if(a==='a-'||a==='b-'){const k=a[0];if(sc[k]>0){push();sc[k]--;save();drawSB();}return;}
+  if(a==='undo'){const h=sc.hist.pop();if(h){Object.assign(sc,h);save();drawSB();}return;}
+  if(a==='swap'){[sc.a,sc.b]=[sc.b,sc.a];[sc.setsA,sc.setsB]=[sc.setsB,sc.setsA];[sc.nameA,sc.nameB]=[sc.nameB,sc.nameA];sc.serve=sc.serve==='a'?'b':'a';sc.hist=[];save();drawSB();return;}
+  if(a==='next'){if(!b.dataset.armed&&!setOver(sc)&&(sc.a||sc.b)){b.dataset.armed='1';b.textContent='Tap to confirm';setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent='Next set';}},3000);return;}
+    push();if(sc.a>sc.b)sc.setsA++;else if(sc.b>sc.a)sc.setsB++;sc.set++;sc.a=0;sc.b=0;save();drawSB();return;}
+  if(a==='reset'){if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Tap to reset';setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent='Reset all';}},3000);return;}
+    Object.assign(sc,{a:0,b:0,set:1,setsA:0,setsB:0,serve:'a',hist:[]});save();drawSB();return;}});
+$('sb').addEventListener('change',e=>{if(e.target.matches('[data-sbto]')){SB().to=+e.target.value;save();drawSB();}});
+$('sb').addEventListener('input',e=>{const k=e.target.dataset.sbname;if(k){SB()[k]=e.target.value.trim()||(k==='nameA'?'Blue':'Orange');save();}});
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{if(!(document.fullscreenElement||document.webkitFullscreenElement))$('sb').classList.remove('show');}));
+setInterval(()=>{if(!$('sb').hidden){const el=$('sbTime');if(el)el.textContent=sbTimer();}},1000);
+document.addEventListener('keydown',e=>{if($('sb').hidden)return;if(e.key==='Escape')closeSB();});
 
 renderAdds();renderAll();
 if(S.run&&runPlan()){openRun();document.dispatchEvent(new Event('visibilitychange'));}
