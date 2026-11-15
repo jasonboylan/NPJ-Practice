@@ -54,7 +54,19 @@ h1{font-family:var(--display);font-weight:700;font-size:1.6rem;letter-spacing:.0
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:12px;min-width:0}
 .label{font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:700}
 .field{display:grid;gap:5px;min-width:0}
-.in{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;min-height:42px;width:100%;min-width:0}
+.in{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 10px;min-height:44px;width:100%;min-width:0;font-size:16px}
+input[type=date].in,input[type=time].in{-webkit-appearance:none;appearance:none;display:block;line-height:26px;text-align:left}
+input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;min-height:1.5em}
+.notes,.dur input{font-size:16px}
+/* schedule */
+.sched{display:grid;gap:8px}
+.srow{display:grid;grid-template-columns:minmax(0,1fr) 150px 112px;gap:8px;align-items:center;padding:8px;border-radius:10px;background:var(--bg)}
+.srow.cur{outline:2px solid var(--brand);outline-offset:-2px}
+.srow .sname{border:0;background:none;padding:0;text-align:left;font-weight:700;color:var(--brand);min-height:40px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:underline;text-underline-offset:3px}
+.srow .in{background:var(--surface);min-height:40px;padding:6px 8px}
+@media (max-width:440px){.srow{grid-template-columns:1fr 1fr}.srow .sname{grid-column:1/-1}}
+.repeat{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.repeat select{width:auto}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
 @media (max-width:440px){.grid3{grid-template-columns:1fr 1fr}.grid3 .span{grid-column:1/-1}}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -174,6 +186,15 @@ h1{font-family:var(--display);font-weight:700;font-size:1.6rem;letter-spacing:.0
     <p class="hint">Blocks change in 5-minute steps. Tap a number to type any length.</p>
   </section>
 
+  <section class="card" aria-label="Schedule">
+    <div class="label">Practice schedule</div>
+    <p class="hint">Change the date or start time of any practice right here. Tap a name to open it.</p>
+    <div class="sched" id="sched"></div>
+    <div class="repeat"><span class="hint" style="margin:0">Repeat this practice weekly for</span>
+      <select id="repN" class="in" style="width:auto"><option value="1">1 more week</option><option value="2">2 more weeks</option><option value="3">3 more weeks</option><option value="4" selected>4 more weeks</option><option value="5">5 more weeks</option><option value="6">6 more weeks</option><option value="7">7 more weeks</option><option value="8">8 more weeks</option><option value="9">9 more weeks</option><option value="10">10 more weeks</option><option value="11">11 more weeks</option><option value="12">12 more weeks</option></select>
+      <button class="btn small primary" id="repGo">Add dates</button></div>
+  </section>
+
   <section class="card" aria-label="Run and share">
     <div class="row"><button class="btn go" id="startRun">▶ Start practice</button></div>
     <div class="row">
@@ -228,9 +249,15 @@ function toast(t){const el=$('toast');el.textContent=t;el.classList.add('show');
 function msg(t){$('msg').textContent=t||'';clearTimeout(msg._h);if(t)msg._h=setTimeout(()=>$('msg').textContent='',4000);}
 
 /* ---------- render ---------- */
+function sortedPlans(){return S.plans.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.start).localeCompare(String(b.start)));}
+function renderOptions(){$('planSel').innerHTML=sortedPlans().map(p=>`<option value="${p.id}"${p.id===S.cur?' selected':''}>${esc((p.name||'Practice')+(p.date?' · '+dateLabel(p.date):''))}</option>`).join('');}
+function renderSched(){const el=$('sched');if(!el)return;
+  el.innerHTML=sortedPlans().map(p=>`<div class="srow${p.id===S.cur?' cur':''}" data-pid="${p.id}">
+    <button class="sname" data-s="open">${esc(p.name||'Practice')}${p.date?' · '+esc(dateLabel(p.date)):''}</button>
+    <input class="in" type="date" data-s="date" value="${esc(p.date||'')}" aria-label="Date for ${esc(p.name||'Practice')}">
+    <input class="in" type="time" step="300" data-s="start" value="${esc(p.start||'18:00')}" aria-label="Start time for ${esc(p.name||'Practice')}"></div>`).join('');}
 function renderPicker(){
-  const sorted=S.plans.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-  $('planSel').innerHTML=sorted.map(p=>`<option value="${p.id}"${p.id===S.cur?' selected':''}>${esc((p.name||'Practice')+(p.date?' · '+dateLabel(p.date):''))}</option>`).join('');
+  renderOptions();renderSched();
   const p=plan();$('pName').value=p.name||'';$('pDate').value=p.date||'';$('pStart').value=p.start||'18:00';$('pLen').value=String(p.len||120);
 }
 function renderBudget(){
@@ -269,8 +296,10 @@ function refreshTimes(){const p=plan();let at=toMin(p.start);document.querySelec
 /* ---------- plan events ---------- */
 $('planSel').addEventListener('change',e=>{S.cur=e.target.value;save();renderAll();});
 $('pName').addEventListener('input',e=>{plan().name=e.target.value;save();clearTimeout(window.__pn);window.__pn=setTimeout(renderPicker,500);});
-$('pDate').addEventListener('change',e=>{plan().date=e.target.value;save();renderPicker();});
-$('pStart').addEventListener('change',e=>{plan().start=e.target.value||'18:00';S.lastStart=plan().start;save();refreshTimes();});
+function setDate(v){if(!v||plan().date===v)return;plan().date=v;save();renderOptions();renderSched();}
+['input','change','blur'].forEach(ev=>$('pDate').addEventListener(ev,e=>setDate(e.target.value)));
+function setStart(v){if(!v||plan().start===v)return;plan().start=v;S.lastStart=v;save();refreshTimes();renderSched();}
+['input','change','blur'].forEach(ev=>$('pStart').addEventListener(ev,e=>setStart(e.target.value)));
 $('pLen').addEventListener('change',e=>{plan().len=+e.target.value;save();renderBudget();});
 $('newPlan').addEventListener('click',()=>{const p=newPlan('Practice');S.plans.push(p);S.cur=p.id;save();renderAll();$('pName').focus();$('pName').select();msg('New practice made from your default plan.');});
 $('dupPlan').addEventListener('click',()=>{const o=plan(),p=JSON.parse(JSON.stringify(o));p.id=uid();p.name=(o.name||'Practice')+' (copy)';p.date=today();p.blocks.forEach(b=>b.id=uid());S.plans.push(p);S.cur=p.id;save();renderAll();msg('Practice duplicated.');});
@@ -278,6 +307,20 @@ $('delPlan').addEventListener('click',e=>{const b=e.currentTarget;
   if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Tap to delete';setTimeout(()=>{delete b.dataset.armed;b.textContent='Delete';},3000);return;}
   delete b.dataset.armed;b.textContent='Delete';
   S.plans=S.plans.filter(p=>p.id!==S.cur);if(!S.plans.length)S.plans.push(newPlan('Practice'));S.cur=S.plans[0].id;save();renderAll();msg('Practice deleted.');});
+
+/* ---------- schedule events ---------- */
+function schedSet(e){const t=e.target,f=t.dataset.s;if(f!=='date'&&f!=='start')return;const row=t.closest('.srow');const p=S.plans.find(x=>x.id===row.dataset.pid);if(!p||!t.value||p[f]===t.value)return;
+  p[f]=t.value;if(f==='start')S.lastStart=t.value;save();renderOptions();
+  row.querySelector('.sname').textContent=(p.name||'Practice')+(p.date?' · '+dateLabel(p.date):'');
+  if(p.id===S.cur){$('pDate').value=p.date||'';$('pStart').value=p.start||'18:00';refreshTimes();}}
+['input','change'].forEach(ev=>$('sched').addEventListener(ev,schedSet));
+$('sched').addEventListener('focusout',e=>{schedSet(e);setTimeout(()=>{if(!$('sched').contains(document.activeElement))renderSched();},300);});
+$('sched').addEventListener('click',e=>{const b=e.target.closest('[data-s="open"]');if(!b)return;S.cur=b.closest('.srow').dataset.pid;save();renderAll();window.scrollTo({top:0,behavior:'smooth'});});
+$('repGo').addEventListener('click',()=>{const src=plan(),n=+$('repN').value||1;const base=new Date((src.date||today())+'T12:00');if(isNaN(base)){msg('Set a date for this practice first.');return;}
+  for(let k=1;k<=n;k++){const d=new Date(base);d.setDate(d.getDate()+7*k);const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if(S.plans.some(p=>p.date===ds&&p.name===src.name))continue;
+    const c=JSON.parse(JSON.stringify(src));c.id=uid();c.date=ds;c.blocks.forEach(b=>b.id=uid());S.plans.push(c);}
+  save();renderOptions();renderSched();msg(`Added ${n} weekly date${n>1?'s':''}. Change any date in the schedule above.`);});
 
 /* ---------- block events ---------- */
 const blkOf=el=>{const a=el.closest('.blk');if(!a)return null;const p=plan();const i=p.blocks.findIndex(b=>b.id===a.dataset.id);return i<0?null:{p,i,b:p.blocks[i]};};
