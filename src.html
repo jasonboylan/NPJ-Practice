@@ -177,16 +177,11 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
       <label class="label" for="teamFilter">Team</label>
       <select id="teamFilter" class="in"></select>
     </div>
-    <div class="planpick">
-      <label class="label" for="planSel">Practice</label>
-      <select id="planSel" class="in"></select>
-    </div>
     <div class="row">
       <button class="btn small primary" id="newPlan">+ New practice</button>
       <button class="btn small" id="dupPlan">Duplicate</button>
       <button class="btn small danger" id="delPlan">Delete</button>
     </div>
-    <label class="field"><span class="label">Name</span><input id="pName" class="in" maxlength="40" placeholder="e.g. Tuesday practice"></label>
     <div class="field"><span class="label">This practice is for</span><div class="tchips" id="tChips"></div></div>
     <div class="grid3">
       <label class="field"><span class="label">Date</span><input id="pDate" class="in" type="date"></label>
@@ -285,6 +280,8 @@ function msg(t){$('msg').textContent=t||'';clearTimeout(msg._h);if(t)msg._h=setT
 
 /* ---------- render ---------- */
 const teamsOf=p=>Array.isArray(p.teams)?p.teams:[];
+function pTitle(p){return (p.date?dateLabel(p.date):'No date')+' · '+clock(toMin(p.start));}
+function pTeams(p){return teamsOf(p).length?teamsOf(p).join(', '):'No team';}
 function inFilter(p){const f=S.filter||'all';if(f==='all')return true;if(f==='none')return !teamsOf(p).length;return teamsOf(p).includes(f);}
 function teamLine(p){const t=teamsOf(p);return t.length?t.join(', '):'';}
 function sortedAll(){return S.plans.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.start).localeCompare(String(b.start)));}
@@ -306,17 +303,17 @@ function renderTeamChips(){const p=plan(),mine=knownTeams(),on=teamsOf(p);
     +`<button class="tchip edit" data-team-edit="1">${mine.length?'Edit my teams':'+ Choose your teams'}</button>`
     +`<select class="in tadd" id="tAdd" aria-label="Add any NPJ team to this practice"><option value="">+ Add any NPJ team…</option>${Object.entries(CLUB_TEAMS).map(([g,ts])=>`<optgroup label="${g}">${ts.filter(t=>!on.includes(t)).map(t=>`<option value="${esc(t)}">${esc(fullName(t))}</option>`).join('')}</optgroup>`).join('')}</select>`;}
 function sortedPlansUnused(){return S.plans.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.start).localeCompare(String(b.start)));}
-function renderOptions(){const list=sortedPlans();if(!list.find(p=>p.id===S.cur))list.unshift(plan());$('planSel').innerHTML=list.map(p=>`<option value="${p.id}"${p.id===S.cur?' selected':''}>${esc((p.name||'Practice')+(p.date?' · '+dateLabel(p.date):'')+(teamsOf(p).length?' · '+teamsOf(p).join(', '):''))}</option>`).join('');}
+function renderOptions(){if(!$('planSel'))return;const list=sortedPlans();if(!list.find(p=>p.id===S.cur))list.unshift(plan());$('planSel').innerHTML=list.map(p=>`<option value="${p.id}"${p.id===S.cur?' selected':''}>${esc(pTitle(p)+' · '+pTeams(p))}</option>`).join('');}
 function renderSched(){const el=$('sched');if(!el)return;const list=sortedPlans();
   if(!list.length){el.innerHTML=`<p class="hint">No practices for ${esc(S.filter==='none'?'this filter':fullName(S.filter))} yet. Tap + New practice to add one.</p>`;return;}
   el.innerHTML=list.map(p=>`<div class="srow${p.id===S.cur?' cur':''}" data-pid="${p.id}">
-    <button class="sname" data-s="open">${esc(p.name||'Practice')}${p.date?' · '+esc(dateLabel(p.date)):''}</button>
+    <button class="sname" data-s="open">${esc(pTitle(p))}</button>
     <div class="ttags">${teamsOf(p).length?teamsOf(p).map(t=>`<span class="ttag">${esc(t)}</span>`).join(''):'<span class="ttag none">No team</span>'}</div>
-    <input class="in" type="date" data-s="date" value="${esc(p.date||'')}" aria-label="Date for ${esc(p.name||'Practice')}">
-    <input class="in" type="time" step="300" data-s="start" value="${esc(p.start||'18:00')}" aria-label="Start time for ${esc(p.name||'Practice')}"></div>`).join('');}
+    <input class="in" type="date" data-s="date" value="${esc(p.date||'')}" aria-label="Date for practice ${esc(pTitle(p))}">
+    <input class="in" type="time" step="300" data-s="start" value="${esc(p.start||'18:00')}" aria-label="Start time for practice ${esc(pTitle(p))}"></div>`).join('');}
 function renderPicker(){
   renderFilter();renderOptions();renderSched();renderTeamChips();
-  const p=plan();$('pName').value=p.name||'';$('pDate').value=p.date||'';$('pStart').value=p.start||'18:00';$('pLen').value=String(p.len||120);
+  const p=plan();$('pDate').value=p.date||'';$('pStart').value=p.start||'18:00';$('pLen').value=String(p.len||120);
 }
 function renderBudget(){
   const p=plan(),t=total(p),L=+p.len||120,diff=L-t,scale=Math.max(L,t);
@@ -352,15 +349,14 @@ function renderAll(){renderPicker();renderBudget();renderBlocks();}
 function refreshTimes(){const p=plan();let at=toMin(p.start);document.querySelectorAll('.blk').forEach((el,i)=>{const b=p.blocks[i];const from=at;at+=+b.min||0;el.querySelector('.when').innerHTML=`<b>${clockShort(from)}</b>${clockShort(at)}`;});renderBudget();}
 
 /* ---------- plan events ---------- */
-$('planSel').addEventListener('change',e=>{S.cur=e.target.value;save();renderAll();});
-$('pName').addEventListener('input',e=>{plan().name=e.target.value;save();clearTimeout(window.__pn);window.__pn=setTimeout(renderPicker,500);});
+
 function setDate(v){if(!v||plan().date===v)return;plan().date=v;save();renderOptions();renderSched();}
 ['input','change','blur'].forEach(ev=>$('pDate').addEventListener(ev,e=>setDate(e.target.value)));
 function setStart(v){if(!v||plan().start===v)return;plan().start=v;S.lastStart=v;save();refreshTimes();renderSched();}
 ['input','change','blur'].forEach(ev=>$('pStart').addEventListener(ev,e=>setStart(e.target.value)));
 $('pLen').addEventListener('change',e=>{plan().len=+e.target.value;save();renderBudget();});
-$('newPlan').addEventListener('click',()=>{const p=newPlan('Practice');S.plans.push(p);S.cur=p.id;save();renderAll();$('pName').focus();$('pName').select();msg('New practice made from your default plan.');});
-$('dupPlan').addEventListener('click',()=>{const o=plan(),p=JSON.parse(JSON.stringify(o));p.id=uid();p.name=(o.name||'Practice')+' (copy)';p.date=today();p.blocks.forEach(b=>b.id=uid());S.plans.push(p);S.cur=p.id;save();renderAll();msg('Practice duplicated.');});
+$('newPlan').addEventListener('click',()=>{const p=newPlan('Practice');S.plans.push(p);S.cur=p.id;save();renderAll();$('pDate').focus();msg('New practice made from your default plan. Set its date and teams.');});
+$('dupPlan').addEventListener('click',()=>{const o=plan(),p=JSON.parse(JSON.stringify(o));p.id=uid();p.date=today();p.blocks.forEach(b=>b.id=uid());S.plans.push(p);S.cur=p.id;save();renderAll();msg('Practice duplicated.');});
 $('delPlan').addEventListener('click',e=>{const b=e.currentTarget;
   if(!b.dataset.armed){b.dataset.armed='1';b.textContent='Tap to delete';setTimeout(()=>{delete b.dataset.armed;b.textContent='Delete';},3000);return;}
   delete b.dataset.armed;b.textContent='Delete';
@@ -389,14 +385,14 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('teamSheet').hid
 /* ---------- schedule events ---------- */
 function schedSet(e){const t=e.target,f=t.dataset.s;if(f!=='date'&&f!=='start')return;const row=t.closest('.srow');const p=S.plans.find(x=>x.id===row.dataset.pid);if(!p||!t.value||p[f]===t.value)return;
   p[f]=t.value;if(f==='start')S.lastStart=t.value;save();renderOptions();
-  row.querySelector('.sname').textContent=(p.name||'Practice')+(p.date?' · '+dateLabel(p.date):'');
+  row.querySelector('.sname').textContent=pTitle(p);
   if(p.id===S.cur){$('pDate').value=p.date||'';$('pStart').value=p.start||'18:00';refreshTimes();}}
 ['input','change'].forEach(ev=>$('sched').addEventListener(ev,schedSet));
 $('sched').addEventListener('focusout',e=>{schedSet(e);setTimeout(()=>{if(!$('sched').contains(document.activeElement))renderSched();},300);});
 $('sched').addEventListener('click',e=>{const b=e.target.closest('[data-s="open"]');if(!b)return;S.cur=b.closest('.srow').dataset.pid;save();renderAll();window.scrollTo({top:0,behavior:'smooth'});});
 $('repGo').addEventListener('click',()=>{const src=plan(),n=+$('repN').value||1;const base=new Date((src.date||today())+'T12:00');if(isNaN(base)){msg('Set a date for this practice first.');return;}
   for(let k=1;k<=n;k++){const d=new Date(base);d.setDate(d.getDate()+7*k);const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    if(S.plans.some(p=>p.date===ds&&p.name===src.name))continue;
+    if(S.plans.some(p=>p.date===ds&&p.start===src.start&&pTeams(p)===pTeams(src)))continue;
     const c=JSON.parse(JSON.stringify(src));c.id=uid();c.date=ds;c.blocks.forEach(b=>b.id=uid());S.plans.push(c);}
   save();renderOptions();renderSched();msg(`Added ${n} weekly date${n>1?'s':''}. Change any date in the schedule above.`);});
 
@@ -423,7 +419,7 @@ $('adds').addEventListener('click',e=>{const b=e.target.closest('[data-add]');if
   const last=document.querySelector('.blk:last-of-type');if(last)last.scrollIntoView({behavior:'smooth',block:'center'});});
 
 /* ---------- share and defaults ---------- */
-function planText(p){let at=toMin(p.start);const lines=[`NPJ Practice: ${p.name||'Practice'}${p.date?' · '+dateLabel(p.date):''}`,...(teamsOf(p).length?[`Teams: ${teamsOf(p).join(', ')}`]:[]),`${clock(at)} to ${clock(at+total(p))} (${total(p)} min)`,''];
+function planText(p){let at=toMin(p.start);const lines=[`NPJ Practice · ${p.date?dateLabel(p.date):'No date'}`,...(teamsOf(p).length?[`Teams: ${teamsOf(p).join(', ')}`]:[]),`${clock(at)} to ${clock(at+total(p))} (${total(p)} min)`,''];
   p.blocks.forEach(b=>{const from=at;at+=+b.min;lines.push(`${clockShort(from)}–${clockShort(at)}  ${TYPES[b.type].label} (${b.min} min)${b.notes?' · '+b.notes.replace(/\s+/g,' '):''}`);});
   return lines.join('\n');}
 $('copyPlan').addEventListener('click',async()=>{const t=planText(plan());
@@ -466,7 +462,7 @@ function drawClock(){const r=S.run,p=runPlan();if(!r||!p||r.done)return;const b=
   const now=$('rNow');if(now)now.textContent=new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});}
 function drawRun(){const r=S.run,p=runPlan();if(!r||!p){closeRun();return;}
   const el=$('run');
-  if(r.done){el.innerHTML=`<div class="run-top"><span class="t">${esc(p.name||'Practice')}</span><button class="btn small" data-r="close">Close</button></div>
+  if(r.done){el.innerHTML=`<div class="run-top"><span class="t">${esc(pTeams(p))}</span><button class="btn small" data-r="close">Close</button></div>
     <div class="run-main"><div class="done-screen"><b>Practice done</b><p>${p.blocks.length} blocks · ${total(p)} minutes</p><p>Play Better. Love the Game.</p><button class="btn primary" data-r="close">Back to the plan</button></div></div>`;return;}
   const b=p.blocks[r.idx],nx=p.blocks[r.idx+1];let at=toMin(p.start);for(let k=0;k<r.idx;k++)at+=p.blocks[k].min;
   const tot=total(p);
