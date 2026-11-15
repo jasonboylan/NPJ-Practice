@@ -60,6 +60,7 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 .tchips{display:flex;flex-wrap:wrap;gap:6px}
 .tchip{border:1px solid var(--line);background:var(--bg);border-radius:999px;min-height:38px;padding:4px 12px;font-weight:700;font-size:.9rem}
 .tchip[aria-pressed="true"]{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.tadd{width:auto;max-width:100%;min-height:38px;padding:4px 10px;font-weight:700;color:var(--brand);border-radius:999px}
 .tchip.edit{border-style:dashed;color:var(--brand);background:transparent}
 .ttags{display:flex;flex-wrap:wrap;gap:4px;grid-column:1/-1}
 .ttag{font-size:.72rem;font-weight:800;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--brand) 14%,transparent);color:var(--brand)}
@@ -255,6 +256,8 @@ const CLUB_TEAMS={'18s':['18 Forefront','18 National','18 Premier'],'17s':['17 N
   '16s':['16 National','16 Premier','16 Black','16 Orange','16 White','16 Royal'],'15s':['15 National','15 Premier','15 Black','15 Orange','15 White','15 Royal'],
   '14s':['14 National','14 Premier','14 Black','14 Orange','14 White','14 Royal'],'13s':['13 National','13 Premier','13 Black','13 Orange','13 White'],
   '12s':['12 National','12 Premier','12 Black'],'11s':['11 National']};
+const CLUB_LIST=Object.values(CLUB_TEAMS).flat();
+function fullName(t){return t==='18 Forefront'?'NPJ 18 Forefront':CLUB_LIST.includes(t)?'NPJ Portland '+t:t;}
 const uid=()=>Math.random().toString(36).slice(2,9);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const $=id=>document.getElementById(id);
@@ -288,18 +291,24 @@ function sortedAll(){return S.plans.slice().sort((a,b)=>String(a.date).localeCom
 function sortedPlans(){return sortedAll().filter(inFilter);}
 function knownTeams(){const all=[...S.myTeams];S.plans.forEach(p=>teamsOf(p).forEach(t=>{if(!all.includes(t))all.push(t);}));return all;}
 function renderFilter(){const kt=knownTeams(),f=S.filter||'all';
-  if(f!=='all'&&f!=='none'&&!kt.includes(f))S.filter='all';
+  if(f!=='all'&&f!=='none'&&!kt.includes(f)&&!CLUB_LIST.includes(f))S.filter='all';
   const n=t=>S.plans.filter(p=>teamsOf(p).includes(t)).length,none=S.plans.filter(p=>!teamsOf(p).length).length;
-  $('teamFilter').innerHTML=`<option value="all">All practices (${S.plans.length})</option>`+kt.map(t=>`<option value="${esc(t)}"${S.filter===t?' selected':''}>${esc(t)} (${n(t)})</option>`).join('')
-    +(none?`<option value="none"${S.filter==='none'?' selected':''}>No team yet (${none})</option>`:'');
+  const opt=t=>`<option value="${esc(t)}">${esc(fullName(t))}${n(t)?` (${n(t)})`:''}</option>`;
+  const others=kt.filter(t=>!CLUB_LIST.includes(t));
+  $('teamFilter').innerHTML=`<option value="all">All practices (${S.plans.length})</option>`
+    +(none?`<option value="none">No team yet (${none})</option>`:'')
+    +(S.myTeams.length?`<optgroup label="My teams">${S.myTeams.map(opt).join('')}</optgroup>`:'')
+    +Object.entries(CLUB_TEAMS).map(([g,ts])=>`<optgroup label="${g}">${ts.map(opt).join('')}</optgroup>`).join('')
+    +(others.length?`<optgroup label="Other teams">${others.map(opt).join('')}</optgroup>`:'');
   $('teamFilter').value=S.filter||'all';}
 function renderTeamChips(){const p=plan(),mine=knownTeams(),on=teamsOf(p);
   $('tChips').innerHTML=(mine.length?mine.map(t=>`<button class="tchip" data-team="${esc(t)}" aria-pressed="${on.includes(t)}">${esc(t)}</button>`).join(''):'')
-    +`<button class="tchip edit" data-team-edit="1">${mine.length?'Edit my teams':'+ Choose your teams'}</button>`;}
+    +`<button class="tchip edit" data-team-edit="1">${mine.length?'Edit my teams':'+ Choose your teams'}</button>`
+    +`<select class="in tadd" id="tAdd" aria-label="Add any NPJ team to this practice"><option value="">+ Add any NPJ team…</option>${Object.entries(CLUB_TEAMS).map(([g,ts])=>`<optgroup label="${g}">${ts.filter(t=>!on.includes(t)).map(t=>`<option value="${esc(t)}">${esc(fullName(t))}</option>`).join('')}</optgroup>`).join('')}</select>`;}
 function sortedPlansUnused(){return S.plans.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.start).localeCompare(String(b.start)));}
 function renderOptions(){const list=sortedPlans();if(!list.find(p=>p.id===S.cur))list.unshift(plan());$('planSel').innerHTML=list.map(p=>`<option value="${p.id}"${p.id===S.cur?' selected':''}>${esc((p.name||'Practice')+(p.date?' · '+dateLabel(p.date):'')+(teamsOf(p).length?' · '+teamsOf(p).join(', '):''))}</option>`).join('');}
 function renderSched(){const el=$('sched');if(!el)return;const list=sortedPlans();
-  if(!list.length){el.innerHTML=`<p class="hint">No practices for ${esc(S.filter==='none'?'this filter':S.filter)} yet. Tap + New practice to add one.</p>`;return;}
+  if(!list.length){el.innerHTML=`<p class="hint">No practices for ${esc(S.filter==='none'?'this filter':fullName(S.filter))} yet. Tap + New practice to add one.</p>`;return;}
   el.innerHTML=list.map(p=>`<div class="srow${p.id===S.cur?' cur':''}" data-pid="${p.id}">
     <button class="sname" data-s="open">${esc(p.name||'Practice')}${p.date?' · '+esc(dateLabel(p.date)):''}</button>
     <div class="ttags">${teamsOf(p).length?teamsOf(p).map(t=>`<span class="ttag">${esc(t)}</span>`).join(''):'<span class="ttag none">No team</span>'}</div>
@@ -359,11 +368,14 @@ $('delPlan').addEventListener('click',e=>{const b=e.currentTarget;
 
 /* ---------- team events ---------- */
 $('teamFilter').addEventListener('change',e=>{S.filter=e.target.value;const list=sortedPlans();if(list.length&&!list.find(p=>p.id===S.cur))S.cur=list[list.length-1].id;save();renderAll();});
+$('tChips').addEventListener('change',e=>{if(e.target.id!=='tAdd'||!e.target.value)return;const t=e.target.value,p=plan(),arr=teamsOf(p).slice();
+  if(!arr.includes(t))arr.push(t);p.teams=arr;S.lastTeams=arr.slice();if(!S.myTeams.includes(t)){S.myTeams.push(t);S.myTeams.sort((a,b)=>CLUB_LIST.indexOf(a)-CLUB_LIST.indexOf(b));}
+  save();renderTeamChips();renderFilter();renderOptions();renderSched();});
 $('tChips').addEventListener('click',e=>{if(e.target.closest('[data-team-edit]')){openTeams();return;}const b=e.target.closest('[data-team]');if(!b)return;
   const p=plan(),t=b.dataset.team,arr=teamsOf(p).slice(),i=arr.indexOf(t);if(i>=0)arr.splice(i,1);else arr.push(t);p.teams=arr;S.lastTeams=arr.slice();save();
   b.setAttribute('aria-pressed',arr.includes(t));renderFilter();renderOptions();renderSched();});
 function openTeams(){const groups=Object.assign({},CLUB_TEAMS);if(S.customTeams.length)groups['Other teams']=S.customTeams;
-  $('teamGroups').innerHTML=Object.entries(groups).map(([g,ts])=>`<div class="card tgroup"><h3>${esc(g)}</h3><div class="tchips">${ts.map(t=>`<button class="tchip" data-pick="${esc(t)}" aria-pressed="${S.myTeams.includes(t)}">${esc(t)}</button>`).join('')}</div></div>`).join('');
+  $('teamGroups').innerHTML=Object.entries(groups).map(([g,ts])=>`<div class="card tgroup"><h3>${esc(g)}</h3><div class="tchips">${ts.map(t=>`<button class="tchip" data-pick="${esc(t)}" aria-pressed="${S.myTeams.includes(t)}" title="${esc(fullName(t))}">${esc(t)}</button>`).join('')}</div></div>`).join('');
   $('teamSheet').hidden=false;document.body.style.overflow='hidden';$('teamSheet').scrollTop=0;}
 function closeTeams(){$('teamSheet').hidden=true;document.body.style.overflow='';renderAll();}
 $('teamGroups').addEventListener('click',e=>{const b=e.target.closest('[data-pick]');if(!b)return;const t=b.dataset.pick,i=S.myTeams.indexOf(t);
