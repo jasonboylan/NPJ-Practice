@@ -56,6 +56,21 @@ h1{font-family:var(--display);font-weight:700;font-size:1.6rem;letter-spacing:.0
 input[type=date].in,input[type=time].in{-webkit-appearance:none;appearance:none;display:block;line-height:26px;text-align:left}
 input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left;min-height:1.5em}
 .notes,.dur input{font-size:16px}
+/* teams */
+.tchips{display:flex;flex-wrap:wrap;gap:6px}
+.tchip{border:1px solid var(--line);background:var(--bg);border-radius:999px;min-height:38px;padding:4px 12px;font-weight:700;font-size:.9rem}
+.tchip[aria-pressed="true"]{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.tchip.edit{border-style:dashed;color:var(--brand);background:transparent}
+.ttags{display:flex;flex-wrap:wrap;gap:4px;grid-column:1/-1}
+.ttag{font-size:.72rem;font-weight:800;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--brand) 14%,transparent);color:var(--brand)}
+.ttag.none{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.sheet{position:fixed;inset:0;z-index:60;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 32px) max(16px,env(safe-area-inset-left,0px))}
+.sheet-in{max-width:720px;margin:0 auto;display:grid;gap:12px}
+.sheet-head{display:flex;align-items:center;gap:10px;position:sticky;top:0;background:var(--bg);padding-block:6px;z-index:2}
+.sheet-head h2{margin:0;flex:1;font-family:var(--display);text-transform:uppercase;font-size:1.5rem}
+.tgroup{display:grid;gap:8px}
+.tgroup h3{margin:0;font-size:.75rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
 /* schedule */
 .sched{display:grid;gap:8px}
 .srow{display:grid;grid-template-columns:minmax(0,1fr) 150px 112px;gap:8px;align-items:center;padding:8px;border-radius:10px;background:var(--bg)}
@@ -158,6 +173,10 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 
   <section class="card" aria-label="Practice details">
     <div class="planpick">
+      <label class="label" for="teamFilter">Team</label>
+      <select id="teamFilter" class="in"></select>
+    </div>
+    <div class="planpick">
       <label class="label" for="planSel">Practice</label>
       <select id="planSel" class="in"></select>
     </div>
@@ -167,6 +186,7 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
       <button class="btn small danger" id="delPlan">Delete</button>
     </div>
     <label class="field"><span class="label">Name</span><input id="pName" class="in" maxlength="40" placeholder="e.g. Tuesday practice"></label>
+    <div class="field"><span class="label">This practice is for</span><div class="tchips" id="tChips"></div></div>
     <div class="grid3">
       <label class="field"><span class="label">Date</span><input id="pDate" class="in" type="date"></label>
       <label class="field"><span class="label">Start time</span><input id="pStart" class="in" type="time" step="300"></label>
@@ -205,6 +225,15 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
   </section>
 </main>
 
+<section class="sheet" id="teamSheet" hidden aria-label="Choose your teams">
+  <div class="sheet-in">
+    <div class="sheet-head"><h2>My teams</h2><button class="btn primary" id="teamsDone">Done</button></div>
+    <p class="hint">Pick every NPJ Portland team you coach. You can then tag each practice with one or more of them and filter your schedule by team.</p>
+    <div id="teamGroups"></div>
+    <div class="card"><div class="label">Add another team</div>
+      <div class="row"><input id="customTeam" class="in" maxlength="30" placeholder="e.g. 11 Premier" style="flex:1"><button class="btn small primary" id="addCustom">Add</button></div></div>
+  </div>
+</section>
 <section class="run" id="run" hidden aria-label="Practice timer"></section>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -221,15 +250,20 @@ const TYPES={
 const ORDER=['1v1','2v2','queens','scrimmage','open','water'];
 const NPJ_DEFAULT=[['open',15,'Warm-up'],['1v1',15,''],['water',5,''],['2v2',20,''],['queens',20,''],['water',5,''],['scrimmage',30,''],['open',10,'Cool down and team talk']];
 const KEY='npjPractice.v1';
+/* NPJ Portland teams (from the club info page); coaches can add others */
+const CLUB_TEAMS={'18s':['18 Forefront','18 National','18 Premier'],'17s':['17 National','17 Premier'],
+  '16s':['16 National','16 Premier','16 Black','16 Orange','16 White','16 Royal'],'15s':['15 National','15 Premier','15 Black','15 Orange','15 White','15 Royal'],
+  '14s':['14 National','14 Premier','14 Black','14 Orange','14 White','14 Royal'],'13s':['13 National','13 Premier','13 Black','13 Orange','13 White'],
+  '12s':['12 National','12 Premier','12 Black'],'11s':['11 National']};
 const uid=()=>Math.random().toString(36).slice(2,9);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const $=id=>document.getElementById(id);
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 
 function blocksFrom(tpl){return tpl.map(([type,min,notes])=>({id:uid(),type,min,notes:notes||''}));}
-function newPlan(name){const tpl=S.myDefault||NPJ_DEFAULT;return {id:uid(),name:name||'Practice',date:today(),start:S.lastStart||'18:00',len:120,blocks:blocksFrom(tpl)};}
+function newPlan(name){const tpl=S.myDefault||NPJ_DEFAULT;const tm=S.filter&&S.filter!=='all'&&S.filter!=='none'?[S.filter]:(S.lastTeams||[]).slice();return {id:uid(),name:name||'Practice',date:today(),start:S.lastStart||'18:00',len:120,teams:tm,blocks:blocksFrom(tpl)};}
 
-let S={plans:[],cur:null,myDefault:null,lastStart:null,run:null,sound:true};
+let S={plans:[],cur:null,myDefault:null,lastStart:null,run:null,sound:true,myTeams:[],customTeams:[],filter:'all',lastTeams:[]};
 try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&Array.isArray(o.plans))S=Object.assign(S,o);}}catch(e){}
 if(!S.plans.length){const p=newPlan('Practice');S.plans.push(p);S.cur=p.id;}
 if(!S.plans.find(p=>p.id===S.cur))S.cur=S.plans[0].id;
@@ -247,15 +281,32 @@ function toast(t){const el=$('toast');el.textContent=t;el.classList.add('show');
 function msg(t){$('msg').textContent=t||'';clearTimeout(msg._h);if(t)msg._h=setTimeout(()=>$('msg').textContent='',4000);}
 
 /* ---------- render ---------- */
-function sortedPlans(){return S.plans.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.start).localeCompare(String(b.start)));}
-function renderOptions(){$('planSel').innerHTML=sortedPlans().map(p=>`<option value="${p.id}"${p.id===S.cur?' selected':''}>${esc((p.name||'Practice')+(p.date?' · '+dateLabel(p.date):''))}</option>`).join('');}
-function renderSched(){const el=$('sched');if(!el)return;
-  el.innerHTML=sortedPlans().map(p=>`<div class="srow${p.id===S.cur?' cur':''}" data-pid="${p.id}">
+const teamsOf=p=>Array.isArray(p.teams)?p.teams:[];
+function inFilter(p){const f=S.filter||'all';if(f==='all')return true;if(f==='none')return !teamsOf(p).length;return teamsOf(p).includes(f);}
+function teamLine(p){const t=teamsOf(p);return t.length?t.join(', '):'';}
+function sortedAll(){return S.plans.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.start).localeCompare(String(b.start)));}
+function sortedPlans(){return sortedAll().filter(inFilter);}
+function knownTeams(){const all=[...S.myTeams];S.plans.forEach(p=>teamsOf(p).forEach(t=>{if(!all.includes(t))all.push(t);}));return all;}
+function renderFilter(){const kt=knownTeams(),f=S.filter||'all';
+  if(f!=='all'&&f!=='none'&&!kt.includes(f))S.filter='all';
+  const n=t=>S.plans.filter(p=>teamsOf(p).includes(t)).length,none=S.plans.filter(p=>!teamsOf(p).length).length;
+  $('teamFilter').innerHTML=`<option value="all">All practices (${S.plans.length})</option>`+kt.map(t=>`<option value="${esc(t)}"${S.filter===t?' selected':''}>${esc(t)} (${n(t)})</option>`).join('')
+    +(none?`<option value="none"${S.filter==='none'?' selected':''}>No team yet (${none})</option>`:'');
+  $('teamFilter').value=S.filter||'all';}
+function renderTeamChips(){const p=plan(),mine=knownTeams(),on=teamsOf(p);
+  $('tChips').innerHTML=(mine.length?mine.map(t=>`<button class="tchip" data-team="${esc(t)}" aria-pressed="${on.includes(t)}">${esc(t)}</button>`).join(''):'')
+    +`<button class="tchip edit" data-team-edit="1">${mine.length?'Edit my teams':'+ Choose your teams'}</button>`;}
+function sortedPlansUnused(){return S.plans.slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.start).localeCompare(String(b.start)));}
+function renderOptions(){const list=sortedPlans();if(!list.find(p=>p.id===S.cur))list.unshift(plan());$('planSel').innerHTML=list.map(p=>`<option value="${p.id}"${p.id===S.cur?' selected':''}>${esc((p.name||'Practice')+(p.date?' · '+dateLabel(p.date):'')+(teamsOf(p).length?' · '+teamsOf(p).join(', '):''))}</option>`).join('');}
+function renderSched(){const el=$('sched');if(!el)return;const list=sortedPlans();
+  if(!list.length){el.innerHTML=`<p class="hint">No practices for ${esc(S.filter==='none'?'this filter':S.filter)} yet. Tap + New practice to add one.</p>`;return;}
+  el.innerHTML=list.map(p=>`<div class="srow${p.id===S.cur?' cur':''}" data-pid="${p.id}">
     <button class="sname" data-s="open">${esc(p.name||'Practice')}${p.date?' · '+esc(dateLabel(p.date)):''}</button>
+    <div class="ttags">${teamsOf(p).length?teamsOf(p).map(t=>`<span class="ttag">${esc(t)}</span>`).join(''):'<span class="ttag none">No team</span>'}</div>
     <input class="in" type="date" data-s="date" value="${esc(p.date||'')}" aria-label="Date for ${esc(p.name||'Practice')}">
     <input class="in" type="time" step="300" data-s="start" value="${esc(p.start||'18:00')}" aria-label="Start time for ${esc(p.name||'Practice')}"></div>`).join('');}
 function renderPicker(){
-  renderOptions();renderSched();
+  renderFilter();renderOptions();renderSched();renderTeamChips();
   const p=plan();$('pName').value=p.name||'';$('pDate').value=p.date||'';$('pStart').value=p.start||'18:00';$('pLen').value=String(p.len||120);
 }
 function renderBudget(){
@@ -306,6 +357,23 @@ $('delPlan').addEventListener('click',e=>{const b=e.currentTarget;
   delete b.dataset.armed;b.textContent='Delete';
   S.plans=S.plans.filter(p=>p.id!==S.cur);if(!S.plans.length)S.plans.push(newPlan('Practice'));S.cur=S.plans[0].id;save();renderAll();msg('Practice deleted.');});
 
+/* ---------- team events ---------- */
+$('teamFilter').addEventListener('change',e=>{S.filter=e.target.value;const list=sortedPlans();if(list.length&&!list.find(p=>p.id===S.cur))S.cur=list[list.length-1].id;save();renderAll();});
+$('tChips').addEventListener('click',e=>{if(e.target.closest('[data-team-edit]')){openTeams();return;}const b=e.target.closest('[data-team]');if(!b)return;
+  const p=plan(),t=b.dataset.team,arr=teamsOf(p).slice(),i=arr.indexOf(t);if(i>=0)arr.splice(i,1);else arr.push(t);p.teams=arr;S.lastTeams=arr.slice();save();
+  b.setAttribute('aria-pressed',arr.includes(t));renderFilter();renderOptions();renderSched();});
+function openTeams(){const groups=Object.assign({},CLUB_TEAMS);if(S.customTeams.length)groups['Other teams']=S.customTeams;
+  $('teamGroups').innerHTML=Object.entries(groups).map(([g,ts])=>`<div class="card tgroup"><h3>${esc(g)}</h3><div class="tchips">${ts.map(t=>`<button class="tchip" data-pick="${esc(t)}" aria-pressed="${S.myTeams.includes(t)}">${esc(t)}</button>`).join('')}</div></div>`).join('');
+  $('teamSheet').hidden=false;document.body.style.overflow='hidden';$('teamSheet').scrollTop=0;}
+function closeTeams(){$('teamSheet').hidden=true;document.body.style.overflow='';renderAll();}
+$('teamGroups').addEventListener('click',e=>{const b=e.target.closest('[data-pick]');if(!b)return;const t=b.dataset.pick,i=S.myTeams.indexOf(t);
+  if(i>=0)S.myTeams.splice(i,1);else S.myTeams.push(t);
+  const order=[...Object.values(CLUB_TEAMS).flat(),...S.customTeams];S.myTeams.sort((a,b)=>order.indexOf(a)-order.indexOf(b));save();b.setAttribute('aria-pressed',S.myTeams.includes(t));});
+$('addCustom').addEventListener('click',()=>{const v=$('customTeam').value.trim().replace(/^NPJ\s+(Portland\s+)?/i,'');if(!v)return;
+  if(!S.customTeams.includes(v)&&!Object.values(CLUB_TEAMS).flat().includes(v))S.customTeams.push(v);if(!S.myTeams.includes(v))S.myTeams.push(v);$('customTeam').value='';save();openTeams();});
+$('teamsDone').addEventListener('click',closeTeams);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('teamSheet').hidden)closeTeams();});
+
 /* ---------- schedule events ---------- */
 function schedSet(e){const t=e.target,f=t.dataset.s;if(f!=='date'&&f!=='start')return;const row=t.closest('.srow');const p=S.plans.find(x=>x.id===row.dataset.pid);if(!p||!t.value||p[f]===t.value)return;
   p[f]=t.value;if(f==='start')S.lastStart=t.value;save();renderOptions();
@@ -343,7 +411,7 @@ $('adds').addEventListener('click',e=>{const b=e.target.closest('[data-add]');if
   const last=document.querySelector('.blk:last-of-type');if(last)last.scrollIntoView({behavior:'smooth',block:'center'});});
 
 /* ---------- share and defaults ---------- */
-function planText(p){let at=toMin(p.start);const lines=[`NPJ Practice: ${p.name||'Practice'}${p.date?' · '+dateLabel(p.date):''}`,`${clock(at)} to ${clock(at+total(p))} (${total(p)} min)`,''];
+function planText(p){let at=toMin(p.start);const lines=[`NPJ Practice: ${p.name||'Practice'}${p.date?' · '+dateLabel(p.date):''}`,...(teamsOf(p).length?[`Teams: ${teamsOf(p).join(', ')}`]:[]),`${clock(at)} to ${clock(at+total(p))} (${total(p)} min)`,''];
   p.blocks.forEach(b=>{const from=at;at+=+b.min;lines.push(`${clockShort(from)}–${clockShort(at)}  ${TYPES[b.type].label} (${b.min} min)${b.notes?' · '+b.notes.replace(/\s+/g,' '):''}`);});
   return lines.join('\n');}
 $('copyPlan').addEventListener('click',async()=>{const t=planText(plan());
@@ -391,7 +459,7 @@ function drawRun(){const r=S.run,p=runPlan();if(!r||!p){closeRun();return;}
   const b=p.blocks[r.idx],nx=p.blocks[r.idx+1];let at=toMin(p.start);for(let k=0;k<r.idx;k++)at+=p.blocks[k].min;
   const tot=total(p);
   const overall=p.blocks.map((x,k)=>`<span class="${k<r.idx?'done':k===r.idx?'cur':''}" style="width:${(x.min/tot*100).toFixed(2)}%;background:var(--t-${x.type})"></span>`).join('');
-  el.innerHTML=`<div class="run-top"><span class="t">Block ${r.idx+1} of ${p.blocks.length} · <span id="rNow"></span></span>
+  el.innerHTML=`<div class="run-top"><span class="t">${teamsOf(p).length?esc(teamsOf(p).join(', '))+' · ':''}Block ${r.idx+1} of ${p.blocks.length} · <span id="rNow"></span></span>
       <div class="row"><button class="btn small" data-r="sound" aria-pressed="${S.sound}">${S.sound?'🔔 Sound on':'🔕 Sound off'}</button><button class="btn small" data-r="end">End</button></div></div>
     <div class="run-overall" aria-hidden="true">${overall}</div>
     <div class="run-main" style="--c:var(--t-${b.type})">
